@@ -70,7 +70,6 @@ onto already have `shops`/`licences`/`sync_records` on its localhost MySQL?"*:
 ```bash
 curl -s --max-time 5 ifconfig.me; echo          # what this server thinks its IP is
 ls ~/public_html/api 2>/dev/null | head -3      # the old billing-api? then this IS that server
-php -r 'echo getenv("DB_HOST") ?: "unset", "\n";'   # not useful yet; step 4 fills it in
 mysql -h127.0.0.1 -uquicktap -p -e "select count(*) from quicktap.shops;" 2>&1 | tail -2
 ```
 
