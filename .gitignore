@@ -1,3 +1,13 @@
+# Python tooling in tools/
+__pycache__/
+*.pyc
+
+# Server secrets and local databases — never commit these
+billing-api/config.php
+billing-api/storage/*.sqlite
+billing-api/storage/*.sqlite3
+
+# IDE / OS leftovers
 *.iml
 .gradle/
 local.properties

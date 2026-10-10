@@ -1,0 +1,35 @@
+# The rewrite rules a shared Apache host needs (Hostinger: upload the folder, keep
+# this file). Existing files — install.php, admin/*.php — are served as they are;
+# everything else is handed to index.php so /v1/license/status reaches the router.
+
+Options -Indexes
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+
+  # Never answer a request for the library, the database or the config.
+  RewriteRule ^(lib|storage)/ - [F,L]
+  RewriteRule ^config\.php$ - [F,L]
+  # token.php is shell-only (install.php stays reachable because it guards itself
+  # with install_key and is meant to be deleted right after)
+  RewriteRule ^token\.php$ - [F,L]
+  # dotfiles, and nothing inside the folder that holds the sqlite test database
+  RewriteRule (^\.|/\.) - [F,L]
+
+  # the panel keeps its own URL space, also when this folder sits under /api/
+  RewriteCond %{REQUEST_URI} !admin/
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteRule ^ index.php [L,QSA]
+</IfModule>
+
+<IfModule mod_authz_core.c>
+  <FilesMatch "\.(sqlite|sqlite3|log|sql)$">
+    Require all denied
+  </FilesMatch>
+</IfModule>
+
+# The Android app sends the Authorization header; some PHP-FPM setups drop it
+# unless it is copied into an environment variable explicitly.
+<IfModule mod_setenvif.c>
+  SetEnvIf Authorization "(.*)" HTTP_AUTHORIZATION=$1
+</IfModule>

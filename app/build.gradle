@@ -1,4 +1,7 @@
-plugins { id 'com.android.application' }
+plugins {
+    id 'com.android.application'
+    id 'com.google.gms.google-services'
+}
 
 android {
     namespace 'com.quicktap.pos'
@@ -8,12 +11,14 @@ android {
         applicationId "com.quicktap.pos"
         minSdk 21
         targetSdk 34
-        versionCode 1
-        versionName "1.0"
-        // ---- Fixed bootstrap endpoint (never remote controlled) -----------
+        versionCode 5
+        versionName "1.3.1"
+        // ---- Compiled-in bootstrap endpoint ------------------------------
+        // This is the LAST fallback in 类018's order, not the first: Remote Config's
+        // api_base_url, then the last known-good cached address, then this constant.
         // Android -> bootstrap API -> Firebase config -> Remote Config
         //         -> api_base_url -> ApiClient -> self-hosted PHP API
-        buildConfigField "String", "BOOTSTRAP_BASE_URL", "\"https://aifinzo.pro/api/\""
+        buildConfigField "String", "BOOTSTRAP_BASE_URL", "\"https://quickxlab.com/api/\""
         // Application credentials issued by the Super Admin (api_clients).
         buildConfigField "String", "APP_ID", "\"app_41f7d123706a\""
         buildConfigField "String", "API_KEY", "\"a94791db4b426d74bccd78155b2b4eedc773488ee7b4c7d2\""

@@ -1,0 +1,33 @@
+<IfModule mod_rewrite.c>
+    Options -MultiViews
+    RewriteEngine On
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^ index.php [QSA,L]
+</IfModule>
+
+# Uploads land in public/apk: a downloadable .apk is the point, executing anything in there
+# is not. (Never chmod 777 this folder to make an upload work — fix the owner instead.)
+<IfModule mod_rewrite.c>
+    RewriteRule ^apk/.+\.(php|phtml|phar|cgi|pl|py|sh)$ - [F,L]
+</IfModule>
+
+<FilesMatch "^\.env|^storage$">
+    Require all denied
+</FilesMatch>
+
+# An APK must download as a file, not be gzip-negotiated. `mod_mime` is standard; the
+# Cache-Control lines below are only legal when mod_headers exists — an `Header` directive
+# outside <IfModule> turns the whole site into a 500 on a host that has no mod_headers.
+<FilesMatch "\.apk$">
+    ForceType application/vnd.android.package-archive
+</FilesMatch>
+
+<IfModule mod_headers.c>
+    <FilesMatch "\.apk$">
+        Header set Cache-Control "public, max-age=3600"
+    </FilesMatch>
+    <FilesMatch "\.(css|js|svg|png|jpg|jpeg|webp|woff2)$">
+        Header set Cache-Control "public, max-age=604800"
+    </FilesMatch>
+</IfModule>

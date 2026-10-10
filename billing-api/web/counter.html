@@ -1,0 +1,396 @@
+<!doctype html>
+<!--
+  QuickTap web counter — a working bill screen for a browser, in one file.
+
+  Open it (or host it anywhere), paste the API address and the shop's X-Api-Token from
+  the admin panel, and it bills through the same endpoints the Android till uses, into the
+  same records. There is no build step and no dependency: the API client sits next to it in
+  ../client/quicktap-api.js.
+
+  It is deliberately small: it is a starting point to copy, and a live demonstration that
+  the billing system is not tied to the phone.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>QuickTap counter</title>
+<style>
+:root{--bg:#f6f7f9;--panel:#fff;--line:#e3e6eb;--ink:#161a1f;--dim:#6b7683;--ok:#1f9d55;--bad:#d64545;--accent:#2f6df6}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+header{display:flex;gap:10px;align-items:center;padding:10px 14px;background:var(--panel);border-bottom:1px solid var(--line);flex-wrap:wrap;position:sticky;top:0;z-index:5}
+header h1{font-size:16px;margin:0}
+header .grow{margin-left:auto}
+main{display:grid;grid-template-columns:1fr 340px;gap:14px;padding:14px;max-width:1180px;margin:0 auto}
+@media(max-width:900px){main{grid-template-columns:1fr}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+input,select,button{font:inherit;padding:8px 10px;border-radius:9px;border:1px solid var(--line);background:#fff;color:var(--ink)}
+input[type=number]{width:92px}
+button{cursor:pointer;background:var(--accent);color:#fff;border:0;font-weight:600}
+button.ghost{background:#eef1f5;color:var(--ink)}
+button.danger{background:var(--bad)}
+button:disabled{opacity:.5;cursor:not-allowed}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{border:1px solid var(--line);border-radius:999px;padding:5px 11px;background:#fff;font-size:13px}
+.chip.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(122px,1fr));gap:9px;margin-top:10px}
+.tile{background:#fff;border:1px solid var(--line);border-radius:11px;padding:10px;text-align:left;cursor:pointer;color:var(--ink);display:flex;flex-direction:column;gap:3px}
+.tile strong{font-size:14px;line-height:1.25}
+.tile span{color:var(--dim);font-size:12px}
+.tile.out{background:#fafbfc;color:#9aa4af}
+.cart{display:flex;flex-direction:column;gap:6px;margin:8px 0;max-height:38vh;overflow:auto}
+.line{display:grid;grid-template-columns:1fr auto auto auto;gap:6px;align-items:center;border-bottom:1px dashed var(--line);padding-bottom:5px;font-size:14px}
+.line b{white-space:nowrap}
+.qty{display:flex;align-items:center;gap:4px}
+.qty button{padding:2px 8px;background:#eef1f5;color:var(--ink);font-size:15px;line-height:1.2}
+.totals{display:flex;flex-direction:column;gap:5px;font-size:14px}
+.totals .grand{font-size:20px;font-weight:700;border-top:1px solid var(--line);padding-top:7px}
+.muted{color:var(--dim);font-size:13px}
+.state{font-size:13px;padding:5px 10px;border-radius:999px;background:#eef1f5}
+.state.ok{background:rgba(31,157,85,.13);color:#14683a}
+.state.bad{background:rgba(214,69,69,.12);color:#9c2b2b}
+#setup{display:none;margin-top:10px}
+#setup.on{display:block}
+#receipt{display:none}
+@media print{
+  body{background:#fff}
+  body>*:not(#receipt){display:none!important}
+  #receipt{display:block;width:76mm;margin:0 auto;font-family:ui-monospace,Menlo,monospace;font-size:11.5px;line-height:1.4}
+  #receipt h2{font-size:14px;margin:0 0 3px;text-align:center}
+  #receipt table{width:100%;border-collapse:collapse}
+  #receipt td{padding:1px 0;vertical-align:top}
+  #receipt .r{text-align:right}
+  #receipt hr{border:0;border-top:1px dashed #999;margin:5px 0}
+}
+</style>
+</head>
+<body>
+<header>
+  <h1 id="brand">QuickTap counter</h1>
+  <span class="state" id="state">not connected</span>
+  <span class="grow"></span>
+  <span class="muted" id="today"></span>
+  <button class="ghost" id="settings" type="button">Settings</button>
+</header>
+
+<div id="setup" class="card" style="max-width:1180px;margin:12px auto 0">
+  <div class="row">
+    <label class="muted">API address <input id="baseUrl" placeholder="https://your-domain.com/api" size="30"></label>
+    <label class="muted">API token <input id="token" placeholder="qt_pat_…" size="34"></label>
+    <button id="connect" type="button">Connect</button>
+    <span class="muted">Both are kept in this browser only (localStorage). Create the token in the admin panel → API access; a
+      <em>read-only</em> token makes this page a price list that cannot bill.</span>
+  </div>
+</div>
+
+<main>
+  <section class="card">
+    <div class="row">
+      <input id="search" class="grow" placeholder="Search products…" style="flex:1" autocomplete="off">
+      <button class="ghost" id="reload" type="button">Reload</button>
+    </div>
+    <div class="chips" id="categories"></div>
+    <div class="grid" id="products"></div>
+    <p class="muted" id="catalogNote"></p>
+  </section>
+
+  <section class="card">
+    <strong>Bill</strong>
+    <div class="row" style="margin-top:6px">
+      <select id="orderType">
+        <option value="TAKE_AWAY">Take away</option>
+        <option value="DINE_IN">Dine in</option>
+        <option value="DELIVERY">Delivery</option>
+      </select>
+      <input id="tableNo" placeholder="Table / rider" size="8">
+      <input id="customer" placeholder="Customer" size="12">
+    </div>
+    <div class="cart" id="cart"></div>
+    <div class="row">
+      <label class="muted">Discount <input id="discount" type="number" min="0" step="1" value="0"></label>
+      <label class="muted">Tax % <input id="taxPercent" type="number" min="0" max="100" step="0.5" value="0"></label>
+      <label class="muted">Pay
+        <select id="payment">
+          <option>CASH</option><option>CARD</option><option>WALLET</option><option>BANK</option><option>CREDIT</option>
+        </select>
+      </label>
+      <label class="muted">Status
+        <select id="status"><option value="paid">paid</option><option value="unpaid">unpaid</option></select>
+      </label>
+    </div>
+    <div class="totals" id="totals"></div>
+    <div class="row" style="margin-top:10px">
+      <button id="send" type="button" disabled>Send bill&nbsp;<span class="muted" style="color:#cfe0ff">F2</span></button>
+      <button class="ghost" id="print" type="button" disabled>Print</button>
+      <button class="ghost" id="clear" type="button">Clear</button>
+    </div>
+    <p class="muted" id="result"></p>
+  </section>
+</main>
+
+<section id="receipt"></section>
+
+<script type="module">
+import { QuickTap, QuickTapError, newUuid, money } from '../client/quicktap-api.js';
+
+const $ = (id) => document.getElementById(id);
+const state = { qt: null, products: [], categories: [], category: '', cart: new Map(), currency: '', bill: null };
+
+const store = {
+  load: () => { try { return JSON.parse(localStorage.getItem('quicktap.counter') || '{}'); } catch { return {}; } },
+  save: (value) => localStorage.setItem('quicktap.counter', JSON.stringify(value)),
+};
+
+function setState(text, tone = '') {
+  const el = $('state');
+  el.textContent = text;
+  el.className = 'state' + (tone ? ' ' + tone : '');
+}
+
+function toast(message, isError = false) {
+  $('result').innerHTML = '';
+  const node = document.createElement('span');
+  node.className = isError ? 'muted' : 'muted';
+  node.style.color = isError ? '#b3261e' : '#14683a';
+  node.textContent = message;
+  $('result').appendChild(node);
+}
+
+async function connect() {
+  const baseUrl = $('baseUrl').value.trim();
+  const token = $('token').value.trim();
+  if (!baseUrl || !token) { toast('Fill in both the API address and the token.', true); return; }
+  state.qt = new QuickTap({ baseUrl, token });
+  store.save({ baseUrl, token });
+  $('setup').classList.remove('on');
+  setState('connecting…');
+  try {
+    const data = await state.qt.shop();
+    state.currency = data.shop.currency || '';
+    $('brand').textContent = data.shop.app_name || data.shop.name;
+    const licence = data.licence || {};
+    const mayBill = licence.unlocked && licence.state === 'ACTIVE';
+    setState((mayBill ? 'ready · ' : 'billing blocked · ') + (licence.duration_label || licence.license_status),
+             mayBill ? 'ok' : 'bad');
+    $('send').disabled = !mayBill;
+    if (!mayBill) toast(licence.request_status === 'LICENSE_EXPIRED'
+      ? 'This shop’s licence has expired, so the server will refuse a bill. ' + (licence.duration_label || '')
+      : 'The server says: ' + (licence.license_status || 'UNKNOWN'), !mayBill);
+    await loadCatalog();
+    await loadToday();
+  } catch (error) {
+    setState('not connected', 'bad');
+    toast(error.message, true);
+  }
+}
+
+async function loadCatalog() {
+  const data = await state.qt.catalog();
+  state.categories = data.categories || [];
+  state.products = (data.products || []).filter((p) => Number(p.is_active !== 0));
+  renderCategories();
+  renderProducts();
+  $('catalogNote').textContent = `${state.products.length} products · ${state.categories.length} categories — `
+    + 'shared with the till, so a price changed here arrives on the phone after its next sync.';
+}
+
+function renderCategories() {
+  const box = $('categories');
+  box.innerHTML = '';
+  const chip = (label, value) => {
+    const button = document.createElement('button');
+    button.className = 'chip' + (state.category === value ? ' on' : '');
+    button.type = 'button';
+    button.textContent = label;
+    button.onclick = () => { state.category = value; renderCategories(); renderProducts(); };
+    box.appendChild(button);
+  };
+  chip('All', '');
+  for (const category of state.categories) chip(category.name || '—', category.uuid);
+}
+
+function renderProducts() {
+  const needle = $('search').value.trim().toLowerCase();
+  const box = $('products');
+  box.innerHTML = '';
+  for (const product of state.products) {
+    if (state.category && product.category_uuid !== state.category) continue;
+    if (needle && !String(product.name || '').toLowerCase().includes(needle)) continue;
+    const tile = document.createElement('button');
+    tile.type = 'button';
+    tile.className = 'tile' + (Number(product.stock) === 0 ? ' out' : '');
+    const name = document.createElement('strong');
+    name.textContent = product.name || '—';
+    const price = document.createElement('span');
+    price.textContent = money(product.price || 0, state.currency)
+      + (Number(product.stock) >= 0 ? ` · ${product.stock} left` : '');
+    tile.append(name, price);
+    tile.onclick = () => addToCart(product);
+    box.appendChild(tile);
+  }
+  if (!box.children.length) box.innerHTML = '<p class="muted">Nothing matches. Reload, or add products '
+    + 'from the panel/phone — the catalogue is the same list on every client.</p>';
+}
+
+function priceOf(product) { return Number(product.price || 0); }
+
+function addToCart(product) {
+  const key = product.uuid || product.name;
+  const line = state.cart.get(key) || { name: product.name, price: priceOf(product), qty: 0, uuid: product.uuid || '' };
+  line.qty += 1;
+  state.cart.set(key, line);
+  renderCart();
+}
+
+function lines() { return [...state.cart.values()].filter((line) => line.qty > 0); }
+
+function totalsOf(list) {
+  const subtotal = list.reduce((sum, line) => sum + line.price * line.qty, 0);
+  const discount = Math.min(subtotal, Number($('discount').value || 0));
+  const tax = (subtotal - discount) * Number($('taxPercent').value || 0) / 100;
+  return { subtotal, discount, tax, total: subtotal - discount + tax };
+}
+
+function renderCart() {
+  const box = $('cart');
+  box.innerHTML = '';
+  const list = lines();
+  for (const [key, line] of state.cart.entries()) {
+    const row = document.createElement('div');
+    row.className = 'line';
+    const name = document.createElement('span');
+    name.textContent = line.name;
+    const qty = document.createElement('span');
+    qty.className = 'qty';
+    const minus = document.createElement('button');
+    minus.type = 'button'; minus.textContent = '−';
+    minus.onclick = () => { line.qty -= 1; if (line.qty <= 0) state.cart.delete(key); renderCart(); };
+    const count = document.createElement('span');
+    count.textContent = line.qty;
+    const plus = document.createElement('button');
+    plus.type = 'button'; plus.textContent = '+';
+    plus.onclick = () => { line.qty += 1; renderCart(); };
+    qty.append(minus, count, plus);
+    const price = document.createElement('b');
+    price.textContent = money(line.price * line.qty, state.currency);
+    const remove = document.createElement('button');
+    remove.type = 'button'; remove.className = 'ghost'; remove.textContent = '×';
+    remove.onclick = () => { state.cart.delete(key); renderCart(); };
+    row.append(name, qty, price, remove);
+    box.appendChild(row);
+  }
+  const totals = totalsOf(list);
+  const box2 = $('totals');
+  box2.innerHTML = '';
+  const row = (label, value, grand = false) => {
+    const line = document.createElement('div');
+    line.className = 'row' + (grand ? ' grand' : '');
+    line.style.justifyContent = 'space-between';
+    if (grand) line.className = 'grand';
+    line.innerHTML = `<span>${label}</span><b>${money(value, state.currency)}</b>`;
+    box2.appendChild(line);
+  };
+  row('Subtotal', totals.subtotal);
+  if (totals.discount) row('Discount', -totals.discount);
+  if (totals.tax) row('Tax', totals.tax);
+  row('Total', totals.total, true);
+  $('print').disabled = !list.length && !state.bill;
+  $('send').disabled = !list.length || !state.qt || $('send').dataset.blocked === '1';
+}
+
+async function loadToday() {
+  if (!state.qt) return;
+  try {
+    const report = await state.qt.reportDay();
+    $('today').textContent = `today · ${report.bill_count} bills · ${money(report.revenue, state.currency)}`;
+  } catch { /* the counter must keep billing even if a report fails */ }
+}
+
+async function sendBill() {
+  const list = lines();
+  if (!list.length) return;
+  $('send').disabled = true;
+  const body = {
+    uuid: newUuid(),
+    order_type: $('orderType').value,
+    table_no: $('tableNo').value.trim(),
+    customer_name: $('customer').value.trim(),
+    payment_method: $('payment').value,
+    status: $('status').value,
+    discount: Number($('discount').value || 0),
+    tax_percent: Number($('taxPercent').value || 0),
+    items: list.map((line) => ({ name: line.name, price: line.price, qty: line.qty, product_uuid: line.uuid })),
+  };
+  try {
+    const data = await state.qt.saveBill(body);
+    state.bill = data.bill;
+    renderReceipt(data.bill);
+    toast(`Saved ${data.bill.invoice_no} · ${money(data.bill.total, state.currency)}`
+      + (data.stock_reduced && data.stock_reduced.length ? ` · stock updated for ${data.stock_reduced.length} item(s)` : ''));
+    state.cart.clear();
+    $('discount').value = 0; $('tableNo').value = ''; $('customer').value = '';
+    renderCart(); await loadCatalog(); await loadToday();
+    window.print();
+  } catch (error) {
+    const blocked = error instanceof QuickTapError
+      && ['LICENSE_EXPIRED', 'LICENSE_PENDING', 'LICENSE_REVOKED', 'ACCOUNT_BLOCKED', 'SCOPE_DENIED'].includes(error.code);
+    if (blocked) $('send').dataset.blocked = '1';
+    toast(error.message, true);
+    setState(blocked ? 'billing blocked' : 'ready', blocked ? 'bad' : 'ok');
+    $('send').disabled = blocked;
+  } finally {
+    if (!$('send').dataset.blocked) $('send').disabled = !lines().length;
+  }
+}
+
+function renderReceipt(bill) {
+  const money2 = (value) => Number(value || 0).toFixed(2);
+  const rows = (bill.items || []).map((item) =>
+    `<tr><td>${escapeHtml(item.name)} ×${item.qty}</td><td class="r">${money2(item.price * item.qty)}</td></tr>`).join('');
+  $('receipt').innerHTML = `
+    <h2>${escapeHtml($('brand').textContent)}</h2>
+    <div style="text-align:center">${escapeHtml(bill.invoice_no || '')}<br>
+      ${escapeHtml(bill.date || '')} ${escapeHtml((bill.created_at || '').slice(11, 16))}<br>
+      ${escapeHtml(bill.order_type || '')}${bill.table_no ? ' · ' + escapeHtml(bill.table_no) : ''}</div>
+    <hr><table>${rows}</table><hr>
+    <table>
+      <tr><td>Subtotal</td><td class="r">${money2(bill.subtotal)}</td></tr>
+      ${bill.discount ? `<tr><td>Discount</td><td class="r">-${money2(bill.discount)}</td></tr>` : ''}
+      ${bill.tax ? `<tr><td>Tax</td><td class="r">${money2(bill.tax)}</td></tr>` : ''}
+      <tr><td><b>TOTAL</b></td><td class="r"><b>${money2(bill.total)}</b></td></tr>
+      <tr><td>${escapeHtml(bill.payment_method || 'CASH')} · ${escapeHtml(bill.status || 'paid')}</td><td class="r"></td></tr>
+      ${bill.customer_name ? `<tr><td>${escapeHtml(bill.customer_name)}</td><td class="r"></td></tr>` : ''}
+      ${bill.notes ? `<tr><td>${escapeHtml(bill.notes)}</td><td class="r"></td></tr>` : ''}
+    </table>
+    <hr><div style="text-align:center">Thank you · ${escapeHtml(bill.source === 'api' ? 'counter' : 'till')}</div>`;
+  $('print').disabled = false;
+}
+
+function escapeHtml(value) {
+  return String(value === undefined || value === null ? '' : value)
+    .replace(/[&<>"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[char]));
+}
+
+// ------------------------------------------------------------------ wiring
+const saved = store.load();
+$('baseUrl').value = saved.baseUrl || '';
+$('token').value = saved.token || '';
+if (saved.baseUrl && saved.token) connect(); else $('setup').classList.add('on');
+$('settings').onclick = () => $('setup').classList.toggle('on');
+$('connect').onclick = connect;
+$('reload').onclick = () => loadCatalog().catch((error) => toast(error.message, true));
+$('search').oninput = renderProducts;
+$('discount').oninput = renderCart;
+$('taxPercent').oninput = renderCart;
+$('clear').onclick = () => { state.cart.clear(); renderCart(); };
+$('print').onclick = () => window.print();
+$('send').onclick = sendBill;
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'F2') { event.preventDefault(); if (!$('send').disabled) sendBill(); }
+});
+renderCart();
+</script>
+</body>
+</html>
