@@ -7,6 +7,26 @@ are now **one Laravel 12 application** (`quickxlab/`) on one MySQL database: the
 contract, the counter a shopkeeper sees in a browser, the desktop/website token API and the
 marketing site — same rows, same licence rules, one deploy.
 
+### New: `quickxlab/deploy.sh` — the portal on the host in one command
+
+- One command deploys or updates the whole thing over ssh: it reads the host's PHP first (8.2+,
+  `pdo_mysql`), **moves** whatever is in `public_html` into `public_html/tem` rather than deleting
+  anything, packs the app without `.env`, caches or logs, copies the host's own `.env`,
+  `public/apk`, `public/assets` and `storage/logs` back over the new code, runs
+  `composer install`, `key:generate` (only if `.env` has no key), `migrate --force`,
+  `db:seed --force` (fills holes, never overwrites) and the caches, then verifies from outside —
+  `/`, `/api/`, `/admin/login` answering, `/.env` and `/storage/logs` refusing, and a real
+  `POST /api/v1/app/bootstrap` using the pair read from the host's own `.env`, which is the call
+  that says whether a till will accept this server. `--dry-run` prints the plan; `--check`
+  re-verifies an existing deploy and changes nothing; `--with-vendor` covers a host with no
+  composer. An interrupted run is repaired by running it again.
+- It refuses to guess about the database. `quickxlab.com` resolves to `77.37.76.45` while
+  `aifinzo.pro` — where the billing MySQL currently lives — is `145.79.25.20`: two machines. So the
+  probe is `php artisan db:show` **before** anything is written, and `QUICKXLAB_SETUP.md` opens with
+  options A/B/C (run the portal next to the database; reach across via Remote MySQL; or move the
+  database) plus the warning that matters most: two live copies of one billing database is the only
+  genuinely dangerous choice.
+
 ### New: `quickxlab/` (Laravel 12 + MySQL, Blade, no build step)
 
 - **The API is Laravel now.** All 26 `v1/*` endpoints are ported on the same paths and with
