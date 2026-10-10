@@ -145,6 +145,18 @@ if [[ "$MOVE_OLD" == 1 ]]; then
       [ "$f" = tem ] && continue
       mv -- "$f" tem/ 2>/dev/null || true
     done
+    # The old site keeps its config.php with the database password in it. Do not let
+    # anyone read it over HTTP while it sits in the document root.
+    if [ -d tem ]; then
+      cat > tem/.htaccess <<HTX
+Require all denied
+<IfModule !mod_authz_core.c>
+  Order deny,allow
+  Deny from all
+</IfModule>
+HTX
+      if [ -f tem/config.php ]; then chmod 600 tem/config.php; fi
+    fi
     echo "   tem/ now holds $(ls tem | wc -l) entries — the old site is reachable at /tem/"
   ' _ "$DIR"
 fi
@@ -165,7 +177,13 @@ say '3/6  packing'
 if [[ "$WITH_VENDOR" == 1 && ! -d "$LOCAL_DIR/vendor" ]]; then
   die '--with-vendor needs a local vendor/: cd quickxlab && composer install --no-dev --optimize-autoloader'
 fi
-tar -C "$LOCAL_DIR" -cf "$TAR" "${EXCLUDES[@]}" "${PACK_LIST[@]}"
+EXISTING=()
+for item in "${PACK_LIST[@]}"; do
+  [[ -e "$LOCAL_DIR/$item" ]] && EXISTING+=("$item")
+done
+[[ ${#EXISTING[@]} -gt 0 ]] || die "nothing to pack under $LOCAL_DIR — is this the repo root?"
+printf '   packing: %s\n' "${EXISTING[*]}"
+tar -C "$LOCAL_DIR" -cf "$TAR" "${EXCLUDES[@]}" "${EXISTING[@]}"
 printf '   %s of files (no .env, no logs, no caches%s)\n' \
   "$(du -h "$TAR" | cut -f1)" "$( [[ "$WITH_VENDOR" == 1 ]] && echo ', vendor/ included')"
 
@@ -248,8 +266,11 @@ else
     fi
     chmod -R 775 storage bootstrap/cache public/apk 2>/dev/null || true
     php artisan optimize:clear >/dev/null 2>&1 || true
-    php artisan config:cache >/dev/null && php artisan route:cache >/dev/null \
-      && php artisan view:cache >/dev/null && php artisan event:cache >/dev/null
+    # Caching is an optimisation, not a requirement: a failure here must be reported,
+    # not turned into a half-deployed site that `set -e` walks out on.
+    ( php artisan config:cache >/dev/null && php artisan route:cache >/dev/null \
+        && php artisan view:cache >/dev/null && php artisan event:cache >/dev/null ) \
+      || echo "   ! a cache step failed (site still works) - run  php artisan optimize:clear  and cache by hand"
     php artisan about --only=environment 2>/dev/null | sed "s/^/   /" || true
   ' _ "$DIR" "$DO_MIGRATE" || die 'the remote step failed — its output is above. Fix that and
   re-run: every step here is safe to repeat.'
