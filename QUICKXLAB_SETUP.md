@@ -20,6 +20,27 @@ like. That is the whole rollback plan.
 
 ---
 
+## Deploy it in one command (recommended)
+
+From the machine that has this repo checked out — the script does steps 1–7 below, checks the
+host's PHP first, and verifies the result from outside. It never deletes anything on the server
+(`--move-old-site` *moves* the old files to `tem/`, and the host's own `.env`, `public/apk/`,
+`public/assets/` and `storage/logs` are copied back after the extract):
+
+```bash
+./quickxlab/deploy.sh --host=USER@HOST --port=2222 --dir=public_html \
+                      --url=https://quickxlab.com --move-old-site
+```
+
+Useful flags: `--dry-run` (print the plan, change nothing), `--check` (verify an existing
+deploy; also runs `migrate:status` and `route:list` on the host), `--with-vendor` (host has no
+composer), `--skip-migrate` (a hotfix that must not touch the schema). Read the output of the
+last block before you build the APK: `POST /api/v1/app/bootstrap  ok` is the line that means a
+till will accept this server.
+
+Everything below is the same procedure by hand — keep it for when a step has to be done
+personally (a stuck `.env`, a missing extension, a rollback).
+
 ## 0. Paste this first — it tells you what you are working with
 
 ```bash
@@ -31,6 +52,40 @@ You need **PHP 8.2+** (`php -v`), **composer** (if it is missing:
 `php -r "copy('https://getcomposer.org/composer-stable.phar', 'composer.phar');"` and then use
 `php composer.phar` everywhere below), and the right to edit `public_html`. If `ls` shows the
 live site's files, you are in the right place.
+
+## Which server is which — read this before anything else
+
+As of 2026-10-10 the two domains are on **different machines**:
+
+```
+quickxlab.com  -> 77.37.76.45     (the marketing site)
+aifinzo.pro    -> 145.79.25.20    (the current billing-api and its MySQL database)
+```
+
+The portal needs the database that holds `shops`, `licences`, `sync_records`. So pick one:
+
+* **A — run the portal on the server that already has the DB** (`145.79.25.20`). Add
+  `quickxlab.com` as a domain/alias there, point DNS at that machine, issue the SSL
+  certificate for it, and deploy into that host's `public_html`. `DB_HOST=127.0.0.1` stays
+  correct, tills keep the same latency, and the two apps share one database with no network
+  hop between them. **This is the plan I recommend**, and it is what the `.env.example`
+  defaults assume.
+* **B — run the portal on the `quickxlab.com` server** and reach across: `DB_HOST=145.79.25.20`,
+  plus add the portal server's IP to **hPanel → Databases → Remote MySQL** on the DB server.
+  Works, and `deploy.sh` will tell you plainly if you got it wrong (it probes with
+  `php artisan db:show` before it touches anything). Every request then pays a cross-server
+  round trip, which is exactly what an offline-first till was built to avoid.
+* **C — move the database** to the `quickxlab.com` server: export from the old one (step 1),
+  import into the new, set `.env`, and **then the old host must stop writing** — either by
+  pointing its `billing-api/config.php` at the new DB (during the overlap) or by taking it
+  offline. Two live copies of one billing database is the only genuinely dangerous option.
+
+Verify what you have before choosing, on each server:
+
+```bash
+php -r 'foreach(["127.0.0.1"=>0] as $h=>$x){ $p=@fsockopen($h,3306,$e,$s,1); echo $p?"mysql open on $h\n":"no mysql on $h\n"; if($p)fclose($p); }'
+ls ~/public_html/api 2>/dev/null | head -3        # where the current billing-api lives
+```
 
 ## 1. Back up the database before touching anything
 
