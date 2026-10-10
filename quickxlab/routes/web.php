@@ -24,6 +24,8 @@ Route::get('/download', [SiteController::class, 'download'])->name('download');
 Route::get('/support', [SiteController::class, 'support'])->name('support');
 Route::post('/support', [SiteController::class, 'sendTicket'])->middleware('throttle:6,1')->name('support.send');
 Route::get('/developers', [SiteController::class, 'developers'])->name('developers');
+Route::get('/privacy', [SiteController::class, 'legal'])->defaults('slug', 'privacy')->name('privacy');
+Route::get('/terms', [SiteController::class, 'legal'])->defaults('slug', 'terms')->name('terms');
 Route::get('/ref/{code}', [SiteController::class, 'refer'])->name('referral');
 
 Route::get('/signup', [SiteController::class, 'showSignup'])->name('signup');

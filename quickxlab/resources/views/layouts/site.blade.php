@@ -108,7 +108,8 @@
         </div>
     </div>
     <div class="wrap mt2 small muted">
-        © {{ date('Y') }} QuickXLab · {{ $site['currency'] ?? 'PKR' }} · Support 9 AM – 11 PM (PKT)
+        © {{ date('Y') }} QuickXLab · {{ $site['currency'] ?? 'PKR' }} · Support 9 AM – 11 PM (PKT) ·
+        <a href="{{ route('privacy') }}">Privacy</a> · <a href="{{ route('terms') }}">Terms</a>
         @if(!empty($ref)) · Referral <span class="mono">{{ $ref }}</span>@endif
     </div>
 </footer>

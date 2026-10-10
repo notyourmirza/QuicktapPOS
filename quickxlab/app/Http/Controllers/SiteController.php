@@ -76,6 +76,55 @@ class SiteController extends Controller
         ]);
     }
 
+    /**
+     * /privacy and /terms. A `site_pages` row with the same slug wins, so legal copy can be
+     * updated in the panel; the text below is what the software actually does today, which is
+     * the minimum a shopkeeper should be able to read before installing an APK.
+     */
+    public function legal(Request $request, string $slug): View
+    {
+        $slug = $slug === 'terms' ? 'terms' : 'privacy';
+        $row = DB::table('site_pages')->where('slug', $slug)->where('is_active', 1)->first();
+        $defaults = [
+            'privacy' => [
+                'title' => 'Privacy — what the server keeps',
+                'points' => [
+                    'Dukan ka data aap ke phone ke SQLite database me rehta hai; server par sirf wahi jata hai jo sync hota hai (bills, products, categories).',
+                    'Licence ke liye: shop ka naam, username/phone, device id, app version aur last-seen time. Isse zyada kuch nahi.',
+                    'Passwords bcrypt hashes ke tor par rehte hain; API tokens sha256 hash — plaintext ek hi baar dikhta hai.',
+                    'Drive backup aap ke apne Google account ke appData folder me, device-keystore/passphrase se encrypt hoti hai. Humaare server par backup copy nahi hoti.',
+                    'Koi ad SDK, koi tracker, koi third-party analytics nahi. Support WhatsApp par aap khud bhejte hain; uska record hum support ke liye rakhte hain.',
+                    'Data delete karwana ho to /support par likhein — shop, uske bills aur device rows hata diye jate hain.',
+                ],
+            ],
+            'terms' => [
+                'title' => 'Terms — software ka use',
+                'points' => [
+                    'Licence per shop hai, aur jitne plan me seats hain utne tills. Seat release karna aap ke haath me hai.',
+                    'Trial ke baad licence na lein to bills print hona band nahi hote (offline grace), magar sync aur naye devices band ho jate hain.',
+                    'Licence codes share na karein; ek code ek hi dukan lagati hai. Galat code se licence kharab nahi hota — wapas pending ho jata hai.',
+                    'Software “as is” hai. Billing record aap ki zimmedari — har mahine Drive backup check karein, aur tax papers ke liye apni copies rakhein.',
+                    'Refund: jo licence time abhi use nahi hua, us par 7 din me refund mil sakta hai; support se baat karein.',
+                    'Prices badal sakte hain; aap ke chalte hue plan ki price aap ke renewal tak wahi rehti hai.',
+                ],
+            ],
+        ];
+        if ($row !== null) {
+            $points = array_values(array_filter(array_map('trim',
+                explode("\n", (string) $row->body)), static fn ($line) => $line !== ''));
+            $content = ['title' => (string) $row->title, 'points' => $points];
+        } else {
+            $content = $defaults[$slug];
+        }
+
+        return view('site.legal', $this->shared($request) + [
+            'slug' => $slug,
+            'title' => $content['title'],
+            'points' => $content['points'],
+            'updated' => $row === null ? null : stamp_date((string) $row->updated_at),
+        ]);
+    }
+
     public function support(Request $request): View
     {
         return view('site.support', $this->shared($request) + [

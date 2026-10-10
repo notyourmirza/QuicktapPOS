@@ -207,6 +207,11 @@ expiry, shown once, revoked from here or `/account`) · `Bills` (any shop, any r
 export) · `Revenue` (per-day totals) · `Activity` (the audit log) · `Pages`, `Notices`,
 `Settings & APK`, `Support queue`.
 
+`/privacy` and `/terms` are real pages (what the server keeps, what a licence means). A
+`site_pages` row with the slug `privacy` or `terms` overrides them, so legal copy is a panel
+edit too — but say so out loud before you change it: the built-in text describes what this code
+actually does.
+
 A shop owner sees a smaller version of the same thing at `/account`: their licence, their seats
 (with self-service "free seat" for a lost phone), today's total, and their own tokens. They can
 never extend themselves, and no page of theirs can write another shop's row — `shop_id` comes
