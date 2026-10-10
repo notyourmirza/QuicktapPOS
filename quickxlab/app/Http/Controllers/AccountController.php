@@ -58,6 +58,14 @@ class AccountController extends Controller
     {
         $shop = $this->shop($request);
         $user = $this->user($request);
+        if ($user === []) {
+            // The session outlived the row (a disabled or removed owner): sign them out
+            // rather than let a Blade `{{ $user['full_name'] }}` turn into a 500.
+            $request->session()->forget(['shop_user_id', 'shop_id']);
+
+            return redirect()->route('account.login')
+                ->with('flash.bad', 'Aap ka account record nahi mila — dobara login karein.');
+        }
         $shopId = (int) $shop['id'];
         $today = [(int) (strtotime(date('Y-m-d') . ' 00:00:00') * 1000),
                   (int) (strtotime(date('Y-m-d') . ' 23:59:59') * 1000 + 999)];

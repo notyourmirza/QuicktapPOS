@@ -36,11 +36,6 @@ class DeviceController extends Controller
             })
             ->orderByDesc('app_devices.last_seen_at')->paginate(40)->withQueryString();
 
-        foreach ($devices as $device) {
-            $device->age = $device->last_seen_at
-                ? (time() - (int) strtotime((string) $device->last_seen_at)) / 86400 : null;
-        }
-
         return view('admin.devices', [
             'devices' => $devices,
             'status' => $status,

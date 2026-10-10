@@ -46,9 +46,11 @@ class AppServiceProvider extends ServiceProvider
             ]);
         });
 
-        // A query log in storage/logs/sql.log is the difference between "the panel is
-        // slow" and "it is the sync_records scan" — off unless someone asks for it.
-        if (env('DB_QUERY_LOG') === 'true') {
+        // The difference between "the panel is slow" and "it is the sync_records scan".
+        // Read from config, not env(): `php artisan config:cache` stops .env from being
+        // loaded at all, so an env() here would silently never fire on the host that
+        // cached its config — which is every host.
+        if ((bool) config('billing.query_log')) {
             DB::listen(fn (Query $query) => logger('sql', [
                 'query' => $query->sql,
                 'ms' => round($query->time, 1),

@@ -19,6 +19,9 @@ return [
     'sync_batch_limit' => (int) env('BILLING_SYNC_BATCH_LIMIT', 500),
     'offline_grace_hours' => (int) env('BILLING_OFFLINE_GRACE_HOURS', 24),
     'install_key' => env('BILLING_INSTALL_KEY', ''),
+    // true => every query and its milliseconds goes to the log. Slow panel? Turn this on,
+    // load the page, turn it off. Must be set before `php artisan config:cache`.
+    'query_log' => (bool) env('DB_QUERY_LOG', false),
 
     /*
     |--------------------------------------------------------------------------
