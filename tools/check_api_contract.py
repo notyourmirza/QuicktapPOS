@@ -15,6 +15,7 @@ Exit code 0 = contract holds. Anything printed under FAIL must be fixed.
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import sys
 from collections import defaultdict
@@ -28,7 +29,9 @@ ADMIN = API / "admin"
 
 FUNCTION_RE = re.compile(r"^\s*function\s+([a-z_][a-z0-9_]*)\s*\(", re.MULTILINE)
 CALL_RE = re.compile(r"(?<![\w$])\b(qt_[a-z0-9_]*)\s*\(")
-ROUTE_ROW_RE = re.compile(r"""^\s*'(?P<verb>GET|POST)\s+(?P<path>v1/[a-z0-9/_-]+)'\s*=>\s*\[\s*'(?P<handler>\w+)'""", re.MULTILINE)
+ROUTE_ROW_RE = re.compile(
+    r"""^\s*'(?P<verb>GET|POST)\s+(?P<path>v1/[a-z0-9/_-]+)'\s*=>\s*\[\s*'(?P<handler>\w+)',\s*'(?P<auth>app|user|shop)',\s*(?P<licence>true|false)\]""",
+    re.MULTILINE)
 JAVA_CALL_RE = re.compile(r"类016\.(?P<verb>get|post)\(\s*[^,]+,\s*\"(?P<path>[^\"]+)\"")
 # The bootstrap fetch is the one raw HttpURLConnection in the app, so it is matched
 # apart: <base> + "v1/app/bootstrap".
@@ -154,7 +157,8 @@ def main() -> int:
 
     # ---------------------------------------------------------------- 1. routes
     support = sources.get(LIB / "support.php", "")
-    routes = {match.group("path"): (match.group("verb").upper(), match.group("handler"))
+    routes = {match.group("path"): (match.group("verb").upper(), match.group("handler"),
+                                    match.group("auth"), match.group("licence") == "true")
               for match in ROUTE_ROW_RE.finditer(support)}
     if not routes:
         failures.append("no routes found in billing-api/lib/support.php — the table did not parse")
@@ -165,9 +169,10 @@ def main() -> int:
             defined[match.group(1)].add(path.relative_to(ROOT))
 
     print(f"Route table: {len(routes)} endpoints")
-    for route, (verb, handler) in sorted(routes.items()):
+    for route, (verb, handler, auth, licence) in sorted(routes.items()):
         missing = "" if handler in defined else "   <-- NO HANDLER FUNCTION"
-        print(f"  {verb:4} {route:32} {handler}{missing}")
+        gate = "licence" if licence else "-"
+        print(f"  {verb:4} {route:32} {handler:24} {auth:5} {gate}{missing}")
         if missing:
             failures.append(f"{verb} {route}: handler {handler}() is not defined")
 
@@ -200,8 +205,34 @@ def main() -> int:
     for route in sorted(set(referenced) - set(routes)):
         if not any(known == route for known in routes):
             failures.append(f"app mentions {route} which the route table does not serve")
+    # Anything reachable with a shop token is meant for a website or a desktop program,
+    # and those clients are not in this repository — billing-api/API.md is their contract.
+    api_doc = read(API / "API.md")
     for route in sorted(set(routes) - referenced):
-        notes.append(f"route {routes[route][0]} {route} is never mentioned by the app")
+        verb, handler, auth, licence = routes[route]
+        if auth == "shop":
+            if f" {route}" not in api_doc and f"`{route}`" not in api_doc:
+                failures.append(f"billing-api/API.md does not document {verb} {route}, "
+                                f"which an external client is meant to call")
+        else:
+            notes.append(f"route {verb} {route} is only used by the app "
+                         f"(documented in LICENSE_API.md)")
+
+    # The generated description must match the table, and the helpers the guide names
+    # must be in the folder the guide says they are in.
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    try:
+        import build_openapi
+    except ImportError as skipped:
+        notes.append(f"openapi.json not re-derived here: {skipped}")
+    else:
+        expected = json.dumps(build_openapi.build(), indent=2, ensure_ascii=False) + "\n"
+        if read(API / "openapi.json").strip() != expected.strip():
+            failures.append("billing-api/openapi.json is out of date — run: python3 tools/build_openapi.py")
+    for mention in ("client/quicktap-api.py", "client/quicktap-api.js", "web/counter.html",
+                    "token.php", "deploy.sh"):
+        if mention in api_doc and not (API / mention).is_file():
+            failures.append(f"billing-api/API.md points at {mention}, which does not exist")
 
     # --------------------------------------------------- 3. functions resolve
     for path, code in sources.items():
@@ -210,6 +241,15 @@ def main() -> int:
             if name in defined or name in PHP_BUILTINS:
                 continue
             failures.append(f"{path.relative_to(ROOT)} calls {name}() which is defined nowhere")
+
+    # ------------------------------------- 3b. every lib file is loaded at runtime
+    # support.php is the one entry point; a file it forgets to require is dead code
+    # whose functions only fail on the request that happens to need them.
+    loaded = set(re.findall(r"require_once __DIR__\s*\.\s*'/([a-z_]+\.php)'", support))
+    for path in sorted((LIB).glob("*.php")):
+        if path.name != "support.php" and path.name not in loaded:
+            failures.append(f"lib/{path.name} is never required from lib/support.php — "
+                            f"its functions do not exist at runtime")
 
     # ------------------------------------------------------- 4. tables exist
     schema = sources.get(LIB / "schema.php", "")

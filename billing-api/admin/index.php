@@ -247,6 +247,32 @@ try {
             }
             qt_admin_redirect('p=notifications');
 
+        case 'token':
+            qt_admin_csrf_check();
+            $verb = qt_admin_post('verb');
+            if ($verb === 'revoke') {
+                $gone = qt_revoke_api_token((int) qt_admin_post('token_id'), (int) qt_admin_post('shop_id'));
+                qt_admin_flash($gone
+                    ? 'Token revoked — that program stops being accepted on its very next request.'
+                    : 'That token is already revoked or belongs to another shop.');
+                qt_admin_redirect('p=access');
+            }
+            $shopId = (int) qt_admin_post('shop_id');
+            if (qt_load_shop($shopId) === null) {
+                qt_admin_flash('Pick the shop the token may read (or write).');
+                qt_admin_redirect('p=access');
+            }
+            $scopes = array_values(array_intersect(['read', 'write'], (array) ($_POST['scopes'] ?? [])));
+            if (!$scopes) {
+                $scopes = ['read'];
+            }
+            $days = (int) qt_admin_post('days', '0');
+            $issued = qt_issue_api_token($shopId, qt_admin_post('label'), $scopes, max(0, $days));
+            $_SESSION['qt_token'] = $issued['token'];
+            qt_log_audit('panel_token', $shopId, qt_admin_post('label') . ' (' . implode('+', $scopes) . ')');
+            qt_admin_flash('Token created. Copy it now — only its hash is kept from here on.');
+            qt_admin_redirect('p=access');
+
         case 'client':
             qt_admin_csrf_check();
             if (qt_admin_post('verb') === 'disable') {

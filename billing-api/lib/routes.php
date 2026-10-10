@@ -634,11 +634,6 @@ function qt_tokens_for(int $userId, string $deviceId): array
     ];
 }
 
-function qt_hash_token(string $token): string
-{
-    return hash('sha256', $token);
-}
-
 /** Links (or refreshes) the device row for a shop. */
 function qt_bind_device(array $context, int $shopId): void
 {

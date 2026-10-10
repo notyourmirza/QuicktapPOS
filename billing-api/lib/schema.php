@@ -102,6 +102,21 @@ function qt_schema_statements(string $driver = 'mysql'): array
             'used_by_shop' => 'INTEGER NULL',
             'created_at' => 'DATETIME NULL',
         ],
+        // Programmatic access for a web page, a desktop program or another server:
+        // one token per shop, hashed like a password, revocable, scope limited.
+        'api_tokens' => [
+            'id' => $id,
+            'shop_id' => 'INTEGER NOT NULL',
+            'label' => "VARCHAR(60) NOT NULL DEFAULT ''",
+            'token_hash' => 'CHAR(64) NOT NULL UNIQUE',
+            'token_prefix' => 'VARCHAR(16) NOT NULL',
+            'scopes' => "VARCHAR(60) NOT NULL DEFAULT 'read,write'",
+            'last_used_at' => 'DATETIME NULL',
+            // Unix seconds, 0 = never; a shop can hand a temp token to an integrator.
+            'expires_at' => 'INTEGER NOT NULL DEFAULT 0',
+            'created_at' => 'DATETIME NULL',
+            'revoked_at' => 'DATETIME NULL',
+        ],
         // The device registry: this is the "hisab" the app shows under Device access.
         'app_devices' => [
             'id' => $id,
@@ -125,7 +140,10 @@ function qt_schema_statements(string $driver = 'mysql'): array
             'created_at' => 'DATETIME NULL',
             'revoked_at' => 'DATETIME NULL',
         ],
-        // Legacy multi-till catalogue sync ("Sync now"): last write wins per uuid.
+        // The shared record store: the till pushes catalogue rows and bills here, and
+        // the web page / desktop program read and write the same rows. `occurred_ms` is
+        // the business time (bill created_at, catalogue updated_at) kept as an integer so
+        // a date filter or a newest-first page is a plain index range instead of a scan.
         'sync_records' => [
             'id' => $id,
             'shop_id' => 'INTEGER NOT NULL',
@@ -134,6 +152,8 @@ function qt_schema_statements(string $driver = 'mysql'): array
             'payload' => 'TEXT NULL',
             'updated_at' => 'DATETIME NULL',
             'deleted_at' => 'DATETIME NULL',
+            'occurred_at' => 'DATETIME NULL',
+            'occurred_ms' => 'INTEGER NOT NULL DEFAULT 0',
         ],
         'notifications' => [
             'id' => $id,
@@ -169,8 +189,10 @@ function qt_schema_statements(string $driver = 'mysql'): array
         'idx_devices_seen' => ['app_devices', 'last_seen_at', false],
         'idx_tokens_user' => ['refresh_tokens', 'user_id', false],
         'idx_audit_shop' => ['audit_log', 'shop_id', false],
+        'idx_tokens_shop' => ['api_tokens', 'shop_id', false],
         'uq_devices_shop_device' => ['app_devices', 'shop_id, device_id', true],
         'uq_sync_entity_uuid' => ['sync_records', 'shop_id, entity, uuid', true],
+        'idx_sync_occurred' => ['sync_records', 'shop_id, entity, occurred_ms', false],
     ];
 
     $statements = [];

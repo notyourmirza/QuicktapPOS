@@ -8,7 +8,10 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/schema.php';    // install.php and the tests need it; the API does not
 require_once __DIR__ . '/license.php';
+require_once __DIR__ . '/access.php';
+require_once __DIR__ . '/records.php';
 require_once __DIR__ . '/routes.php';
 
 // -------------------------------------------------------------------- config
@@ -161,7 +164,7 @@ function qt_cors_headers(array $config): void
     }
     header('Access-Control-Allow-Origin: ' . $origin);
     header('Vary: Origin');
-    header('Access-Control-Allow-Headers: Content-Type, Authorization, X-App-Id, X-Api-Key, X-App-Version, X-Device-Id');
+    header('Access-Control-Allow-Headers: Content-Type, Authorization, X-App-Id, X-Api-Key, X-App-Version, X-Device-Id, X-Api-Token');
     header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
     header('Access-Control-Max-Age: 600');
     if (strtoupper($_SERVER['REQUEST_METHOD'] ?? '') === 'OPTIONS') {
@@ -217,6 +220,15 @@ function qt_routes(): array
         // remote configuration writes back through these
         'POST v1/settings/app-name'  => ['qt_settings_app_name', 'user', false],
         'GET v1/notifications'       => ['qt_notifications', 'user', false],
+        // shop data for web pages, desktop programs and other servers
+        'GET v1/shop'                  => ['qt_shop_profile', 'shop', false],
+        'GET v1/catalog'               => ['qt_catalog_list', 'shop', false],
+        'POST v1/catalog/products'      => ['qt_catalog_save_product', 'shop', true],
+        'POST v1/catalog/categories'    => ['qt_catalog_save_category', 'shop', true],
+        'GET v1/bills'                  => ['qt_bills_list', 'shop', false],
+        'POST v1/bills'                 => ['qt_bills_save', 'shop', true],
+        'GET v1/reports/day'            => ['qt_report_day', 'shop', false],
+        'GET v1/reports/range'          => ['qt_report_range', 'shop', false],
         // two-way catalogue sync (the app's legacy "Sync now")
         'POST v1/sync/push'          => ['qt_sync_push', 'user', true],
         'GET v1/sync/pull'           => ['qt_sync_pull', 'user', true],
@@ -240,18 +252,39 @@ function qt_route(string $method, string $path): void
     // One place decides the two global rules: who may call at all, and whether an
     // active licence is required. Handlers therefore never re-implement the gate.
     $context = qt_context($auth);
+
+    // A token is a shop key, not a session. It reaches the shop's own records and
+    // nothing else — never the licence, the device seats, the settings or sign-in,
+    // so a leaked token on a web server cannot lock a till out or extend a licence.
+    if (($context['via'] ?? '') === 'token' && !qt_token_may_reach($auth)) {
+        qt_deny('SCOPE_DENIED',
+            'An API token may only call v1/shop, v1/catalog, v1/bills and v1/reports. '
+            . 'That endpoint belongs to the till itself.', 403);
+    }
     if ($needsLicence) {
         qt_require_licence($context);
+    }
+    // A token that was handed out as read-only cannot write, whatever the endpoint.
+    // Deciding it here means no handler can forget the check.
+    if ($method === 'POST') {
+        qt_require_scope($context, 'write');
     }
     call_user_func($handler, qt_input(), $context);
     qt_deny('NOT_HANDLED', 'The request was not handled.', 500);
 }
 
 /**
- * Everything an endpoint needs: the verified app client, the signed-in user (when
- * a token was sent) and this device's fingerprint. Also enforces the two rules
- * the app trusts: the licence must be ACTIVE for data-modifying endpoints, and a
- * device may only ever talk for the shop it was registered to.
+ * Everything an endpoint needs: the verified app client, who is calling, this
+ * device's fingerprint and the shop's licence state. Three auth levels exist, and
+ * they are the only place the gate is decided:
+ *
+ *   'app'     any verified build (bootstrap, config, plans, login, register)
+ *   'user'    a signed-in phone session (JWT) — the licence + account screens
+ *   'shop'    a phone session OR an API token: shop data for web + desktop clients
+ *
+ * An API token (X-Api-Token / Bearer qt_pat_…) is what makes the same billing system
+ * usable from a website or a PC program: it names a shop, carries scopes, and never
+ * expires with a phone session.
  */
 function qt_context(string $auth = 'app'): array
 {
@@ -263,8 +296,22 @@ function qt_context(string $auth = 'app'): array
     $appId = (string) ($_SERVER['HTTP_X_APP_ID'] ?? '');
     $apiKey = (string) ($_SERVER['HTTP_X_API_KEY'] ?? '');
     $client = qt_find_client($appId, $apiKey);
+
+    $bearer = qt_bearer_token();
+    $suppliedToken = $bearer !== '' ? $bearer
+        : (string) ($_SERVER['HTTP_X_API_TOKEN'] ?? '');
+    $isPat = strncmp($suppliedToken, 'qt_pat_', 7) === 0;
+
+    // A shop's own API token is a credential of the same standing as the build pair,
+    // so a browser page or a desktop program needs exactly one header to get going.
+    if ($client === null && !$isPat) {
+        qt_deny('NO_API_KEY',
+            'Send X-App-Id and X-Api-Key (the app), or X-Api-Token (a website or desktop client).',
+            401);
+    }
     if ($client === null) {
-        qt_deny('NO_API_KEY', 'Missing or unknown X-App-Id / X-Api-Key.', 401);
+        $client = ['app_id' => 'api-token', 'api_key' => '', 'name' => 'api token',
+                   'default_plan' => '', 'is_active' => 1];
     }
 
     $context = [
@@ -278,26 +325,140 @@ function qt_context(string $auth = 'app'): array
         'user' => null,
         'shop' => null,
         'licence' => null,
+        'via' => 'app',
+        'scopes' => ['read', 'write'],
+        'token_id' => 0,
     ];
     if ($context['device_id'] === '' && !empty($context['input']['device_id'])) {
         $candidate = (string) $context['input']['device_id'];
         $context['device_id'] = preg_match('/^[0-9a-f]{16,128}$/i', $candidate) ? $candidate : '';
     }
 
-    if ($auth === 'user') {
-        $token = qt_bearer_token();
+    $token = $suppliedToken;
+
+    if ($isPat) {
+        $context['via'] = 'token';
+        qt_token_access($context, $token);
+    } elseif ($auth === 'user') {
         if ($token === '') {
             qt_deny('NO_TOKEN', 'Sign in again to continue.', 401);
         }
+        $context['via'] = 'session';
         qt_who_is_calling($context, $token, true);
-    } elseif (qt_bearer_token() !== '') {
+    } elseif ($token !== '') {
         // 'app' endpoints answer without a session, but a till that happens to be
         // signed in sends its token anyway — and then it gets ITS shop's branding
         // (v1/app/config is per shop). A stale token is simply ignored here.
-        qt_who_is_calling($context, qt_bearer_token(), false);
+        $context['via'] = 'session';
+        qt_who_is_calling($context, $token, false);
     }
 
+    if ($auth === 'shop' && empty($context['shop'])) {
+        qt_deny('NO_TOKEN', 'This endpoint needs a signed-in till or an API token.', 401);
+    }
     return $context;
+}
+
+/**
+ * Resolves an API token into a shop + scopes. The licence is evaluated with no user,
+ * so a web client is gated by exactly the same expiry the phones are: an expired shop
+ * cannot bill from a browser either.
+ */
+function qt_token_access(array &$context, string $token): void
+{
+    if (strlen($token) < 20) {
+        qt_deny('TOKEN_INVALID', 'That API token is not complete.', 401);
+    }
+    $row = qt_find_token($token);
+    if ($row === null) {
+        qt_deny('TOKEN_INVALID', 'That API token is not recognised.', 401);
+    }
+    $refusal = qt_token_rejection($row);
+    if ($refusal === 'TOKEN_REVOKED') {
+        qt_deny('TOKEN_REVOKED', 'That API token was revoked.', 401);
+    }
+    if ($refusal === 'TOKEN_EXPIRED') {
+        qt_deny('TOKEN_EXPIRED', 'That API token expired. Ask for a new one in the admin panel.', 401);
+    }
+    $shop = qt_load_shop((int) $row['shop_id']);
+    if ($shop === null) {
+        qt_deny('SHOP_INACTIVE', 'The shop behind this token is not available.', 403);
+    }
+    if (strtoupper((string) ($shop['status'] ?? '')) === 'BLOCKED') {
+        qt_deny('ACCOUNT_BLOCKED', 'This account has been blocked.', 403);
+    }
+    $context['shop'] = $shop;
+    $context['scopes'] = array_values(array_filter(array_map('trim',
+        explode(',', (string) $row['scopes']))));
+    $context['token_id'] = (int) $row['id'];
+    $context['device_id'] = 'token:' . (int) $row['id'];
+    $context['licence'] = qt_license_state($shop, null, '');
+    qt_run('UPDATE api_tokens SET last_used_at = ? WHERE id = ?', [qt_sql_now(), (int) $row['id']]);
+}
+
+/** Write endpoints call this so a read-only token can never bill. */
+/**
+ * Why a stored token must not be accepted, or '' when it may. Kept apart from the
+ * lookup so the rule is readable and testable without ending the request.
+ */
+function qt_token_rejection(array $row): string
+{
+    if (!empty($row['revoked_at'])) {
+        return 'TOKEN_REVOKED';
+    }
+    $expires = (int) ($row['expires_at'] ?? 0);
+    if ($expires > 0 && $expires < time()) {
+        return 'TOKEN_EXPIRED';
+    }
+    return '';
+}
+
+/** Whether a shop token may call an endpoint of this auth level at all. */
+function qt_token_may_reach(string $auth): bool
+{
+    return $auth === 'shop';
+}
+
+/** Whether a caller may do `$scope`; a till's own session is always allowed. */
+function qt_scope_allows(array $context, string $scope): bool
+{
+    if (($context['via'] ?? 'session') !== 'token') {
+        return true;
+    }
+    return in_array($scope, $context['scopes'] ?? [], true);
+}
+
+function qt_require_scope(array $context, string $scope): void
+{
+    if (qt_scope_allows($context, $scope)) {
+        return;
+    }
+    $scopes = $context['scopes'] ?? [];
+    qt_deny('SCOPE_DENIED', sprintf(
+        'This API token is %s-only; it may not change data. Create one with the "read,write" '
+        . 'scope in the admin panel.', in_array('write', $scopes, true) ? 'write' : 'read'), 403);
+}
+
+/** sha256 of a token/secret — the plain value is never stored. */
+/**
+ * The address to quote to a client, with a trailing slash so callers append 'v1/…'.
+ * The panel can override it (a host behind a reverse proxy needs the public name), and
+ * everything falls back to the request we are answering.
+ */
+function qt_public_base_url(): string
+{
+    $configured = trim((string) (qt_settings_all()['api_base_url'] ?? ''));
+    if ($configured === '') {
+        // HTTPS only, like every other endpoint rule in this system.
+        $host = (string) ($_SERVER['HTTP_X_FORWARDED_HOST'] ?? $_SERVER['HTTP_HOST'] ?? 'localhost');
+        $configured = 'https://' . $host . rtrim(dirname($_SERVER['SCRIPT_NAME'] ?? '/'), '/');
+    }
+    return rtrim($configured, '/') . '/';
+}
+
+function qt_hash_token(string $token): string
+{
+    return hash('sha256', $token);
 }
 
 /**

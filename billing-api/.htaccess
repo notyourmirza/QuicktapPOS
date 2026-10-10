@@ -10,6 +10,9 @@ Options -Indexes
   # Never answer a request for the library, the database or the config.
   RewriteRule ^(lib|storage)/ - [F,L]
   RewriteRule ^config\.php$ - [F,L]
+  # token.php is shell-only (install.php stays reachable because it guards itself
+  # with install_key and is meant to be deleted right after)
+  RewriteRule ^token\.php$ - [F,L]
   # dotfiles, and nothing inside the folder that holds the sqlite test database
   RewriteRule (^\.|/\.) - [F,L]
 

@@ -21,7 +21,7 @@ Content-Type: application/json
 Accept: application/json
 X-App-Id: app_41f7d123706a          # BuildConfig.APP_ID
 X-Api-Key: a94791db…                # BuildConfig.API_KEY
-X-App-Version: 1.2.0                 # BuildConfig.VERSION_NAME
+X-App-Version: 1.3.0                 # BuildConfig.VERSION_NAME
 X-Device-Id: 0f1e2d…                # sha256 fingerprint, auth/类003.id()
 Authorization: Bearer <access_token> # only when the app has a session
 ```
@@ -31,6 +31,12 @@ Authorization: Bearer <access_token> # only when the app has a session
 * **HTTPS only.** `net/类018` refuses any other scheme, so a plain-HTTP host is not a
   supported configuration.
 * Paths are appended to the base URL, so the base must end with `/`.
+* `X-Api-Token: qt_pat_…` is the **other** credential the server accepts — for a website
+  or a desktop program instead of this app. It is not sent by the phone and it may only
+  reach `v1/shop`, `v1/catalog`, `v1/bills` and `v1/reports/*`; see
+  [`billing-api/API.md`](billing-api/API.md). The router knows three levels: `app`
+  (credentials only, session optional), `user` (a signed-in till) and `shop`
+  (a signed-in till **or** a shop token).
 
 ## Every response
 
@@ -52,6 +58,7 @@ Authorization: Bearer <access_token> # only when the app has a session
 | `NO_TOKEN`, `TOKEN_EXPIRED`, `TOKEN_INVALID` | sign in again (one silent refresh + retry first) |
 | `LICENSE_NOT_FOUND`, `LICENSE_FOREIGN`, `BAD_CREDENTIALS` | inline error on the form |
 | `DEVICE_MISMATCH` | the till must sign in again on *its* device |
+| `TOKEN_REVOKED`, `SCOPE_DENIED` | only a token client can see these; the app never sends one |
 | anything unknown, no answer, or a non-200 | **fail closed**: the licence screen with the server's `message` shown verbatim |
 
 The last row is the important one: the app never interprets silence as permission.
@@ -148,14 +155,24 @@ v1/settings/app-name` with `app_name` lets a shop rename itself everywhere it pr
 ## Catalogue sync (`Sync now`)
 
 * `POST v1/sync/push` — body `{categories:[…], products:[…], orders:[…]}`; each record
-  carries its own `uuid`, `updated_at` (`Y-m-d H:i:s`) and optional `deleted_at`.
-  Response: `data.accepted{categories[],products[],orders[]}` listing the accepted uuids;
-  the app marks exactly those rows as synced.
+  carries its own `uuid`, `updated_at` (`Y-m-d H:i:s` or millis) and optional
+  `deleted_at`. A category is `{uuid,name,sort_order,…}`, a product
+  `{uuid,category_uuid,name,price,barcode,stock,is_active,…}` (`stock: -1` = not counted),
+  and a bill — since 1.3.0 — `{uuid,invoice_no,order_type,table_no,customer_name,
+  customer_phone,customer_code,address,notes,subtotal,discount,tax,total,status,payment_method,
+  created_at,updated_at,deleted_at,items:[{name,price,qty,line_total,product_uuid}]}`.
+  `product_uuid` is what lets the server decrement that product's stock
+  (`SyncDao.productUuidById`); `accepted{…}` lists the uuids the server took and the app
+  marks exactly those rows as synced.
 * `GET v1/sync/pull?since=<ms>` — `data{categories[],products[],orders[],settings{
   auto_lock_minutes,currency,receipt_footer,tax_percent},server_time}`.
   Last write wins per `uuid`, judged on the timestamp the device sent.
 * Both are behind `qt_require_licence()`: an expired till cannot push anything into the
-  shop's history, which is the property that makes offline grace safe.
+  shop's history, which is the property that makes offline grace safe. The same gate
+  covers a website's `POST v1/bills`.
+* The pull also returns `changes.orders[]`; `类034.pull` deliberately applies only
+  `categories` and `products`, because the till stays the ledger of record for its own
+  receipts. Stock edits made elsewhere still arrive, inside the product rows.
 
 ## Firebase and endpoint routing
 

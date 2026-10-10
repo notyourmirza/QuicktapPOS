@@ -8,7 +8,9 @@
 > placeholder until the real OAuth clients exist — see
 > [DRIVE_BACKUP_SETUP.md](DRIVE_BACKUP_SETUP.md). The plan text below is kept unchanged
 > as the reasoning record, including the parts that were later refined (for example the
-> licence screen now also covers the plan store).
+> licence screen now also covers the plan store). **Follow-up in 1.3.0:** the same billing
+> was opened up to a website and a desktop program through one `X-Api-Token` header
+> ([`billing-api/API.md`](billing-api/API.md)); nothing in this plan was undone by it.
 
 ---
 

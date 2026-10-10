@@ -65,7 +65,7 @@ foreach (qt_schema_statements('sqlite') as $statement) {
     $applied++;
 }
 check('schema applies on sqlite', $applied > 10, $applied . ' statements');
-foreach (['api_clients', 'app_settings', 'plans', 'shops', 'users', 'licences', 'activation_codes',
+foreach (['api_clients', 'api_tokens', 'app_settings', 'plans', 'shops', 'users', 'licences', 'activation_codes',
     'app_devices', 'refresh_tokens', 'sync_records', 'notifications', 'audit_log', 'admin_users'] as $table) {
     $exists = $pdo->query("SELECT name FROM sqlite_master WHERE type = 'table' AND name = '"
         . $table . "'")->fetchColumn();
@@ -250,6 +250,132 @@ qt_upsert_sync($shopId, 'products', 'p-1', ['uuid' => 'p-1', 'name' => 'Older wr
 $stored = json_decode((string) qt_row('SELECT payload FROM sync_records WHERE shop_id = ?',
     [$shopId])['payload'], true);
 check_same('an older push is ignored', 'Karak Chai', $stored['name']);
+
+// ------------------------------------------------- external clients (web / desktop)
+
+$issued = qt_issue_api_token($shopId, 'website', ['read', 'write']);
+$plain = (string) $issued['token'];
+$record = (array) $issued['row'];
+check('a token is handed out once, in full', strncmp($plain, 'qt_pat_', 7) === 0 && strlen($plain) >= 40);
+check('the token is found again by its hash', qt_find_token($plain) !== null);
+check_same('  …under the right shop', $shopId, (int) ($record['shop_id'] ?? -1));
+check_same('  …labelled for the panel', 'website', (string) ($record['label'] ?? ''));
+check_same('  …with both scopes', 'read,write', (string) ($record['scopes'] ?? ''));
+check('the plaintext itself is never stored',
+    strpos((string) json_encode($record), substr($plain, 7)) === false);
+check('a guessed token matches nothing', qt_find_token('qt_pat_' . str_repeat('0', 40)) === null);
+
+$_SERVER['HTTP_X_API_TOKEN'] = $plain;
+$apiContext = qt_context('shop');
+unset($_SERVER['HTTP_X_API_TOKEN']);
+check_same('a token alone names the shop', $shopId, (int) $apiContext['shop']['id']);
+check_same('  …and says the call came from a token', 'token', $apiContext['via']);
+check_same('  …carrying that shop\'s licence state', 'ACTIVE', $apiContext['licence']['state']);
+check('  …with the scopes to write', qt_scope_allows($apiContext, 'write'));
+check_same('  …and an origin that is not a till', 'token:' . (int) $record['id'],
+    (string) $apiContext['device_id']);
+
+$readOnly = (string) qt_issue_api_token($shopId, 'public price list', ['read'])['token'];
+$_SERVER['HTTP_X_API_TOKEN'] = $readOnly;
+$narrow = qt_context('shop');
+unset($_SERVER['HTTP_X_API_TOKEN']);
+check_same('a read-only token may read', true, qt_scope_allows($narrow, 'read'));
+check_same('a read-only token may not bill', false, qt_scope_allows($narrow, 'write'));
+check_same('  …while the app itself always may', true,
+    qt_scope_allows(['via' => 'session', 'scopes' => []], 'write'));
+check_same('a token may reach the shop records', true, qt_token_may_reach('shop'));
+check_same('  …and never the licence, devices or sign-in', false, qt_token_may_reach('user'));
+check_same('  …nor the build-only endpoints', false, qt_token_may_reach('app'));
+
+$burnt = qt_issue_api_token($shopId, 'temp', ['read'], 1);
+check_same('a token with an expiry is accepted today', '', qt_token_rejection($burnt['row']));
+check('revoking it in the panel takes effect on the next request',
+    qt_revoke_api_token((int) $burnt['row']['id'], $shopId)
+        && qt_token_rejection(qt_find_token($burnt['token'])) === 'TOKEN_REVOKED');
+qt_run('UPDATE api_tokens SET expires_at = ? WHERE id = ?', [time() - 10, (int) $record['id']]);
+check_same('an expired token is refused by code', 'TOKEN_EXPIRED', qt_token_rejection(qt_find_token($plain)));
+qt_run('UPDATE api_tokens SET expires_at = 0 WHERE id = ?', [(int) $record['id']]);
+check_same('  …and works again when the panel extends it', '', qt_token_rejection(qt_find_token($plain)));
+
+check_same('millis pass through', 1735689600000, qt_unix_ms_of(1735689600000));
+check_same('seconds are widened', 1735689600000, qt_unix_ms_of(1735689600));
+check_same('a datetime is read', 1735689600000, qt_unix_ms_of('2025-01-01 00:00:00'));
+check_same('ISO with Z is read', 1735689600000, qt_unix_ms_of('2025-01-01T00:00:00Z'));
+check_same('junk is 0, never a wrong date', 0, qt_unix_ms_of('tomday'));
+
+$invoice = qt_next_invoice_no($shopId, qt_now_ms());
+check('a web bill gets its own invoice number', (bool) preg_match('/^INV-\d{8}-\d{3}$/', $invoice), $invoice);
+check_same('  …twice in a row is the same number until one is stored', $invoice,
+    qt_next_invoice_no($shopId, qt_now_ms()));
+
+// A bill written from a website lands in the one record store the till pushes into.
+$bill = qt_record_store($shopId, 'orders', [
+    'invoice_no' => $invoice, 'order_type' => 'TAKE_AWAY', 'payment_method' => 'CASH',
+    'status' => 'paid', 'subtotal' => 500, 'discount' => 0, 'tax' => 0, 'total' => 500,
+    'created_at' => qt_now_ms(), 'updated_at' => qt_now_ms(),
+    'items' => [['name' => 'Karak Chai', 'price' => 50, 'qty' => 10, 'line_total' => 500,
+                 'product_uuid' => 'p-1']],
+    'source' => 'api',
+], 'token:' . (int) $record['id']);
+check('the stored bill has a generated uuid', preg_match('/^[0-9a-f]{32}$/', (string) $bill['uuid']) === 1);
+$storedRow = (array) qt_row('SELECT * FROM sync_records WHERE shop_id = ? AND entity = ? AND uuid = ?',
+    [$shopId, 'orders', $bill['uuid']]);
+check('  …in sync_records, so the next pull carries it', $storedRow !== []);
+check_same('  …indexed by its own business time', (int) $bill['_occurred_ms'], (int) $storedRow['occurred_ms']);
+check_same('  …and the next invoice number counts up', 'INV-' . date('Ymd') . '-002',
+    qt_next_invoice_no($shopId, qt_now_ms()));
+$replaced = qt_record_store($shopId, 'orders', array_merge($bill, ['total' => 480, 'discount' => 20]),
+    'token:' . (int) $record['id']);
+check_same('  …so a retry replaces, never duplicates', 1,
+    (int) qt_row('SELECT COUNT(*) AS n FROM sync_records WHERE shop_id = ? AND entity = ?',
+        [$shopId, 'orders'])['n']);
+
+$shaped = qt_bill_shape($replaced);
+check_same('a shaped bill reports the stored money', 480.0, $shaped['total']);
+check_same('  …as paid', 'paid', $shaped['status']);
+check_same('  …from the api source', 'api', $shaped['source']);
+check_same('  …with one line', 1, count($shaped['items']));
+check_same('  …and a date to group by', date('Y-m-d'), $shaped['date']);
+
+$listed = qt_records_of($shopId, 'orders');
+check_same('the bill list finds it', 1, $listed['total']);
+check('  …without leaking the device internals', !isset($listed['rows'][0]['__device']));
+
+$day = qt_summary_for(['shop' => $shop], (int) (strtotime(date('Y-m-d') . ' 00:00:00') * 1000),
+    (int) ((strtotime(date('Y-m-d') . ' 23:59:59') * 1000) + 999));
+check_same('the day report counts the bill', 1, $day['bill_count']);
+check_same('  …and its money', 480.0, $day['revenue']);
+check_same('  …paid, not unpaid', 480.0, $day['paid']);
+check_same('  …average bill', 480.0, $day['average_bill']);
+check_same('  …top seller', 'Karak Chai', (string) $day['top_products'][0]['name']);
+check_same('  …payment mix', 480.0, $day['by_payment_method']['CASH']);
+check_same('  …order-type mix', 480.0, $day['by_order_type']['TAKE_AWAY']);
+check_same('hour buckets are always 24', 24, count(qt_hour_buckets($day['bills'])));
+check_same('the currency travels', 'PKR', $day['currency']);
+
+$range = qt_date_range(['from' => '2025-01-01', 'to' => '2025-01-03']);
+check_same('a range starts at midnight', '2025-01-01 00:00:00', date('Y-m-d H:i:s', (int) ($range[0] / 1000)));
+check_same('  …and covers the whole last day', '2025-01-03 23:59:59',
+    date('Y-m-d H:i:s', (int) ($range[1] / 1000)));
+
+qt_record_store($shopId, 'products', ['uuid' => 'p-2', 'name' => 'Naan', 'price' => 30,
+    'stock' => 10, 'is_active' => 1, 'updated_at' => qt_now_ms()], 'token:' . (int) $record['id']);
+$after = qt_reduce_stock($shopId, [['name' => 'Naan', 'price' => 30, 'qty' => 2,
+    'product_uuid' => 'p-2']], 'token:1');
+check_same('selling decrements catalogue stock', 8, (int) ($after[0]['stock'] ?? -1));
+$naan = json_decode((string) qt_row('SELECT payload FROM sync_records WHERE shop_id = ? AND entity = ? AND uuid = ?',
+    [$shopId, 'products', 'p-2'])['payload'], true);
+check_same('  …so the till pulls the new number', 8, (int) $naan['stock']);
+check_same('a product with untracked stock is left alone', 0,
+    count(qt_reduce_stock($shopId, [['name' => 'Karak Chai', 'price' => 50, 'qty' => 1,
+        'product_uuid' => 'p-1']], 'token:1')));
+$naam = [['name' => 'Naan', 'price' => 30, 'qty' => 2, 'product_uuid' => 'p-2']];
+check_same('the same bill sent twice moves no stock', 0,
+    count(qt_reduce_stock($shopId, $naam, 'token:1', $naam)));
+$one = [['name' => 'Naan', 'price' => 30, 'qty' => 1, 'product_uuid' => 'p-2']];
+$giveBack = qt_reduce_stock($shopId, $one, 'token:1', $naam);
+check_same('  …a smaller edit returns the difference', 9, (int) ($giveBack[0]['stock'] ?? -1));
+check_same('  …reported as +1', 1, (int) ($giveBack[0]['delta'] ?? 0));
 
 // --------------------------------------------------------------------- envelope
 

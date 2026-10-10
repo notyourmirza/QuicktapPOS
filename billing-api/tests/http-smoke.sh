@@ -45,10 +45,17 @@ api() { # api <method> <path> [json-body] [token]
   local method="$1" path="$2" body="${3:-}" token="${4:-}"
   local args=(-s -X "$method"
     -H "X-App-Id: ${APP_ID}" -H "X-Api-Key: ${API_KEY}"
-    -H "X-Device-Id: ${DEVICE_ID}" -H "X-App-Version: 1.2.0"
+    -H "X-Device-Id: ${DEVICE_ID}" -H "X-App-Version: 1.3.0"
     -H 'Content-Type: application/json')
   [[ -n "$token" ]] && args+=(-H "Authorization: Bearer ${token}")
   [[ -n "$body" ]] && args+=(-d "$body")
+  curl "${args[@]}" "${BASE}/${path}"
+}
+
+tokapi() { # tokapi <method> <path> [json-body] [token]  — a website or desktop client
+  local method="$1" path="$2" body="${3:-}" token="${4:-$API_TOKEN}"
+  local args=(-s -X "$method" -H "X-Api-Token: ${token}")
+  [[ -n "$body" ]] && args+=(-H 'Content-Type: application/json' -d "$body")
   curl "${args[@]}" "${BASE}/${path}"
 }
 
@@ -179,6 +186,73 @@ assert_contains 'the bell answers' '"notifications":[]' "$BODY"
 BODY="$(api GET v1/plans '' "$TOKEN")"
 assert_contains 'the store lists three plans' '"plans"' "$BODY"
 assert_contains '  …with the seat per plan' 'max_devices' "$BODY"
+
+# ----------------------------------------------------- a website or desktop client
+# One header, no session, no Android — the same records the till pushes.
+API_TOKEN="$(php -r 'require "lib/support.php"; echo qt_issue_api_token(1, "smoke website", ["read", "write"])["token"];')"
+RO_TOKEN="$(php -r 'require "lib/support.php"; echo qt_issue_api_token(1, "smoke price list", ["read"])["token"];')"
+[[ -n "$API_TOKEN" ]] && pass 'the command line issued two tokens' || fail 'token issue failed'
+
+BODY="$(curl -s "${BASE}/v1/shop")"
+assert_contains 'a call with no credential is refused' 'NO_API_KEY' "$BODY"
+BODY="$(tokapi GET v1/shop '' 'qt_pat_deadbeefdeadbeefdeadbeefdead')"
+assert_contains 'a token nobody issued is refused' 'TOKEN_INVALID' "$BODY"
+
+BODY="$(tokapi GET v1/shop)"
+assert_contains 'one header is enough for a website' 'Smoke Kebab' "$BODY"
+assert_contains '  …it sees the licence the till obeys' '"license_status":"ACTIVE"' "$BODY"
+assert_contains '  …the currency for money' '"currency":"PKR"' "$BODY"
+assert_contains '  …and its own scopes' '"read","write"' "$BODY"
+
+BODY="$(tokapi GET v1/catalog)"
+assert_contains 'the catalogue is the same list the till uses' 'Chicken Roll' "$BODY"
+assert_contains '  …with the price the phone pushed' '"price":250' "$BODY"
+
+BODY="$(tokapi POST v1/bills "{\"uuid\":\"b-web-1\",\"order_type\":\"DINE_IN\",\"table_no\":\"7\",\"payment_method\":\"CASH\",\"status\":\"paid\",\"discount_percent\":10,\"items\":[{\"name\":\"Smoke Web Roll\",\"price\":100,\"qty\":3,\"product_uuid\":\"p-smoke-1\"},{\"name\":\"Chutney\",\"price\":20,\"qty\":2}]}")"
+assert_contains 'a web bill is accepted' '"success":true' "$BODY"
+assert_contains '  …the server did the money' '"total":306' "$BODY"
+assert_contains '  …and the percent discount' '"discount":34' "$BODY"
+assert_contains '  …with an invoice number of its own' 'INV-' "$BODY"
+assert_contains '  …marked as coming from the api' '"source":"api"' "$BODY"
+assert_contains '  …and it moved the stock' '"stock":37' "$BODY"
+
+BODY="$(tokapi GET 'v1/bills?limit=10')"
+assert_contains 'the bill list shows the web bill' 'b-web-1' "$BODY"
+assert_contains '  …with the line names' 'Smoke Web Roll' "$BODY"
+
+BODY="$(tokapi POST v1/bills "{\"uuid\":\"b-web-1\",\"status\":\"unpaid\",\"payment_method\":\"CREDIT\",\"items\":[{\"name\":\"Smoke Web Roll\",\"price\":100,\"qty\":1}]}")"
+assert_contains 'a retried uuid replaces the bill' '"success":true' "$BODY"
+assert_contains '  …so a flaky network is safe to retry' '"status":"unpaid"' "$BODY"
+assert_contains '  …and never bills twice' '"total":100' "$BODY"
+
+BODY="$(tokapi GET v1/reports/day)"
+assert_contains 'the day report answers a counter page' '"bill_count"' "$BODY"
+assert_contains '  …with the top sellers' 'Smoke Web Roll' "$BODY"
+assert_contains '  …24 hour buckets' '"hours":[' "$BODY"
+BODY="$(tokapi GET 'v1/reports/range?from=2020-01-01&to='$(date +%F))"
+assert_contains 'a period report comes back per day' '"days":[' "$BODY"
+
+BODY="$(tokapi POST v1/bills '{\"items\":[{\"name\":\"No\",\"price\":1,\"qty\":1}]}' "$RO_TOKEN")"
+assert_contains 'a read-only token cannot bill' 'SCOPE_DENIED' "$BODY"
+BODY="$(tokapi GET v1/catalog '' "$RO_TOKEN")"
+assert_contains '  …but it can read a price list' '"success":true' "$BODY"
+
+php -r 'require "lib/support.php"; $id = (int) qt_row("SELECT id FROM api_tokens WHERE label = ?", ["smoke website"])["id"]; qt_revoke_api_token($id, 1);'
+BODY="$(tokapi GET v1/shop)"
+assert_contains 'a revoked token stops on the very next request' 'TOKEN_REVOKED' "$BODY"
+php token.php --list --shop=1 >"${WORK}/tokens.txt" 2>&1
+assert_contains 'token.php lists it as revoked' 'REVOKED' "$(cat "${WORK}/tokens.txt")"
+php token.php --shop=1 --label=from-cli --scopes=read,write --print-token >"${WORK}/t.txt" 2>&1
+CLI_TOKEN="$(cat "${WORK}/t.txt")"
+BODY="$(tokapi GET v1/shop '' "$CLI_TOKEN")"
+assert_contains 'a token issued by the shell works the same way' 'Smoke Kebab' "$BODY"
+
+php -r 'require "lib/support.php"; qt_run("UPDATE licences SET expires_at = ? WHERE shop_id = 1", [time() - 60]);'
+BODY="$(tokapi POST v1/bills "{\"uuid\":\"b-web-2\",\"items\":[{\"name\":\"Late\",\"price\":10,\"qty\":1}]}" "$CLI_TOKEN")"
+assert_contains 'an expired licence stops the website too' 'LICENSE_EXPIRED' "$BODY"
+BODY="$(tokapi GET v1/bills '' "$CLI_TOKEN")"
+assert_contains '  …while reading what is owed still works' '"success":true' "$BODY"
+php -r 'require "lib/support.php"; qt_extend_licence(1, 30, "smoke: restored");'
 
 # ------------------------------------------------------------------ admin blocks
 php -r 'require "lib/support.php"; qt_run("UPDATE shops SET status = ? WHERE id = 1", ["BLOCKED"]);'

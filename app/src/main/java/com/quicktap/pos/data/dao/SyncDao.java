@@ -54,6 +54,9 @@ public interface SyncDao {
     @Query("SELECT uuid FROM categories WHERE id = :id LIMIT 1")
     String categoryUuid(long id);
 
+    @Query("SELECT uuid FROM products WHERE id = :id LIMIT 1")
+    String productUuidById(long id);
+
     @Query("SELECT * FROM bills WHERE uuid = :uuid LIMIT 1")
     Bill billByUuid(String uuid);
 

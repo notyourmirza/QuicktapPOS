@@ -234,6 +234,7 @@ function layout(string $title, string $page, string $body): string
         'notifications' => ['Notices', 'p=notifications'],
         'settings' => ['App settings', 'p=settings'],
         'clients' => ['Clients', 'p=clients'],
+        'access' => ['API access', 'p=access'],
         'log' => ['Activity', 'p=log'],
     ];
     $links = '';
@@ -740,6 +741,93 @@ function render_clients(): string
     return layout('Clients', 'clients', $body);
 }
 
+// ------------------------------------------------------------------ API access
+
+/**
+ * Tokens for everything that is not the Android app: a website, a kiosk page, a desktop
+ * counter. Shown once, hashed at rest, revocable per program, and scoped — so a public
+ * price list can be handed a token that physically cannot bill.
+ */
+function render_access(): string
+{
+    $fresh = (string) ($_SESSION['qt_token'] ?? '');
+    unset($_SESSION['qt_token']);
+    $shops = qt_rows('SELECT id, name FROM shops ORDER BY name');
+    $rows = qt_rows('SELECT t.*, s.name AS shop_name FROM api_tokens t
+        LEFT JOIN shops s ON s.id = t.shop_id
+        ORDER BY t.revoked_at IS NOT NULL, t.id DESC LIMIT 200');
+
+    $body = '<h2>API access for a website or a desktop program</h2>'
+        . '<p class="dim">A token names one shop and needs one header: <code>X-Api-Token</code>. '
+        . 'Anything that can send that header can use the shop — <code>curl</code>, a browser page, '
+        . 'Python, C#, Excel. The guide with copy-paste examples is <code>billing-api/API.md</code>.</p>';
+
+    if ($fresh !== '') {
+        $body .= '<div class="flash"><strong>Copy this now — only its hash is kept from here on:</strong><br>'
+            . '<code style="user-select:all;word-break:break-all">' . qt_admin_h($fresh) . '</code>'
+            . '<div class="row-form" style="margin-top:8px"><input value="' . qt_admin_h($fresh)
+            . '" readonly size="56" onclick="this.select()"></div></div>';
+    }
+
+    $body .= '<div class="panel" style="margin:14px 0"><h3>New token</h3>' . form_open('token')
+        . '<div class="grid">'
+        . '<label class="field"><span>Shop</span><select name="shop_id">';
+    if (!$shops) {
+        $body .= '<option value="0">no shops yet</option>';
+    }
+    foreach ($shops as $shop) {
+        $body .= '<option value="' . (int) $shop['id'] . '">' . qt_admin_h((string) $shop['name']) . '</option>';
+    }
+    $body .= '</select></label>'
+        . field('label', 'Label this program', 'website', 'text', 'one per program: website, kiosk-1, accounting-sync')
+        . select_box('days', 'Expires', ['0' => 'never', '30' => '30 days', '90' => '90 days', '365' => '1 year'], '0')
+        . '</div><div class="row-form" style="margin:8px 0">'
+        . '<label class="dim"><input type="checkbox" name="scopes[]" value="read" checked> read</label>'
+        . '<label class="dim"><input type="checkbox" name="scopes[]" value="write"> write (may create bills)</label>'
+        . '</div>'
+        . '<p class="dim">Read-only answers <code>403 SCOPE_DENIED</code> to every write — give that one to '
+        . 'anything running in a customer\'s browser. Only <code>read,write</code> can bill, and even then '
+        . 'the shop\'s licence must be ACTIVE, exactly like a phone.</p>'
+        . submit('Create token') . '</form></div>';
+
+    $body .= '<h2>Tokens</h2><table><thead><tr><th>Shop</th><th>Label</th><th>Token</th><th>Scopes</th>'
+        . '<th>Created / last used</th><th></th></tr></thead><tbody>';
+    if (!$rows) {
+        $body .= '<tr><td colspan="6" class="dim">Nothing issued yet — no external program can reach a shop.</td></tr>';
+    }
+    foreach ($rows as $row) {
+        $expires = (int) ($row['expires_at'] ?? 0);
+        $expired = $expires > 0 && $expires < time();
+        $state = !empty($row['revoked_at']) ? 'REVOKED' : ($expired ? 'EXPIRED' : 'ACTIVE');
+        $body .= '<tr><td><a href="?p=shop&amp;id=' . (int) $row['shop_id'] . '">'
+            . qt_admin_h((string) ($row['shop_name'] ?? ('#' . $row['shop_id']))) . '</td>'
+            . '<td>' . qt_admin_h((string) $row['label']) . '</td>'
+            . '<td class="mono dim">' . qt_admin_h((string) $row['token_prefix']) . '… '
+            . ($state === 'ACTIVE' ? '' : badge($state)) . '</td>'
+            . '<td class="dim">' . qt_admin_h(str_replace(',', ', ', (string) $row['scopes'])) . '</td>'
+            . '<td class="dim">' . qt_admin_when($row['created_at']) . '<br>'
+            . (!empty($row['last_used_at']) ? 'used ' . qt_admin_age($row['last_used_at']) : 'never used')
+            . ($expires > 0 ? '<br>expires ' . qt_admin_h(date('Y-m-d', $expires)) : '') . '</td>'
+            . '<td class="right">' . (empty($row['revoked_at'])
+                ? form_open('token', ['verb' => 'revoke', 'token_id' => $row['id'], 'shop_id' => $row['shop_id']])
+                    . submit('Revoke', 'danger') . '</form>'
+                : '<span class="dim">—</span>') . '</td></tr>';
+    }
+    $body .= '</tbody></table>';
+
+    $sample = $rows ? qt_admin_h((string) $rows[0]['token_prefix']) . '…' : 'qt_pat_…';
+    $body .= '<h2>What a client sends</h2><pre class="codes"># who am I, and may this shop bill today?
+'
+        . 'curl -s ' . qt_admin_h(qt_public_base_url()) . 'v1/shop \\\n'
+        . '  -H "X-Api-Token: ' . $sample . '"</pre>'
+        . '<p class="dim">Two rules gate every call: the token decides <em>which shop</em>, and that shop\'s '
+        . 'licence decides <em>whether it may bill right now</em>. Import <code>billing-api/openapi.json</code> '
+        . 'into Postman or a client generator instead of reading the endpoint table by hand — '
+        . '<code>tools/build_openapi.py</code> regenerates it from the route table, so it cannot go stale.</p>';
+
+    return layout('API access', 'access', $body);
+}
+
 // ------------------------------------------------------------------ audit trail
 
 function render_log(): string
@@ -775,6 +863,7 @@ function render_page(string $page, int $id): string
         case 'notifications': return render_notifications();
         case 'codes': return render_codes();
         case 'clients': return render_clients();
+        case 'access': return render_access();
         case 'log': return render_log();
         default:
             return layout('Not found', 'dashboard',

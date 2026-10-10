@@ -140,7 +140,10 @@ public final class 类034 {
                         .put("name", i.name)
                         .put("price", i.price)
                         .put("qty", i.qty)
-                        .put("line_total", i.lineTotal()));
+                        .put("line_total", i.lineTotal())
+                        // The product uuid travels along so a web or desktop client
+                        // can match the line to its own catalogue copy.
+                        .put("product_uuid", sync.productUuidById(i.productId)));
             }
             b.uuid = persistUuid(sync, b);
             orders.put(new JSONObject()
@@ -149,6 +152,10 @@ public final class 类034 {
                     .put("order_type", b.orderType)
                     .put("customer_name", b.customerName == null ? JSONObject.NULL : b.customerName)
                     .put("customer_phone", b.customerPhone == null ? JSONObject.NULL : b.customerPhone)
+                    .put("address", b.address == null ? JSONObject.NULL : b.address)
+                    .put("table_no", b.tableNo == null ? JSONObject.NULL : b.tableNo)
+                    .put("notes", b.notes == null ? JSONObject.NULL : b.notes)
+                    .put("customer_code", b.customerCode)
                     .put("subtotal", b.subtotal)
                     .put("discount", b.discount)
                     .put("tax", b.tax)
@@ -157,7 +164,8 @@ public final class 类034 {
                     .put("payment_method", b.paymentMethod == null ? "CASH" : b.paymentMethod)
                     .put("created_at", stamp(b.createdAt))
                     .put("updated_at", stamp(b.updatedAt == 0 ? b.createdAt : b.updatedAt))
-                    .put("items", items));
+                    .put("items", items)
+                    .put("deleted_at", b.deleted ? stamp(b.updatedAt == 0 ? b.createdAt : b.updatedAt) : JSONObject.NULL));
         }
         body.put("orders", orders);
 
@@ -196,6 +204,10 @@ public final class 类034 {
         if (changes != null) {
             applyCategories(db.categoryDao(), sync, changes.optJSONArray("categories"));
             applyProducts(db.productDao(), sync, changes.optJSONArray("products"));
+            // changes.orders is deliberately not applied: this till is the ledger of
+            // record for its own receipts, and bills created on the website or in a
+            // desktop program live server-side (panel + v1/bills). Their stock changes
+            // DO arrive here, through the product rows above. See billing-api/API.md.
         }
 
         // Store settings ride along with the pull. Branding is not remote

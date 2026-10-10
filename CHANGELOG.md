@@ -1,5 +1,77 @@
 # QuickTap POS — Changelog
 
+## 1.3.0 (versionCode 4) — the same billing from a website and from a PC
+
+The billing system was locked to the Android till. It is now one service the phone, a web
+page and a desktop program share: the same records, the same catalogue, the same licence
+gate — and no second database to keep in step.
+
+### Server
+
+- **Shop API tokens.** `api_tokens` holds `qt_pat_…` secrets as sha256 hashes with a label,
+  scopes (`read`, `write`), optional expiry, `last_used_at` and `revoked_at`. A client sends
+  one header — `X-Api-Token` — instead of the app credential pair plus a session.
+  Issue, list and revoke them in the panel (**API access**) or from the shell with
+  `php billing-api/token.php --shop=3 --label=website --scopes=read,write`.
+- **Seven endpoints for external clients** (`auth => 'shop'`, i.e. a till session *or* a
+  token): `GET v1/shop`, `GET v1/catalog`, `POST v1/catalog/products`,
+  `POST v1/catalog/categories`, `GET|POST v1/bills`, `GET v1/reports/day`,
+  `GET v1/reports/range`. The old 19 endpoints for the phone are unchanged.
+- **`lib/records.php`** — one store for till and web: the shop's `sync_records` payloads,
+  keyed by uuid, last-write-wins, now indexed by business time
+  (`occurred_at` / `occurred_ms` + `idx_sync_occurred`). `install.php --force` adds the
+  columns a new version needs with guarded `ALTER TABLE … ADD COLUMN` statements, so an
+  already-deployed host is upgraded in place and nothing is dropped.
+- A bill written over the API has its **totals computed by the server** from its lines
+  (`total = subtotal − discount + tax`, discount clamped, `*_percent` accepted instead of
+  absolute values), gets an `INV-YYYYMMDD-###` number when the client omits one, is stamped
+  `source: "api"`, and moves catalogue stock **by the difference** to what that uuid held
+  before — so retrying a flaky request never sells the same items twice, and deleting a line
+  returns the units. Refusals a client must handle: `SCOPE_DENIED`, `TOKEN_INVALID`,
+  `TOKEN_REVOKED`, `TOKEN_EXPIRED`, `NO_ITEMS`, `BAD_QTY`, `BAD_PRICE`, `BAD_DISCOUNT`.
+- **Two rules are enforced in the router, not in the handlers**, so a new endpoint cannot be
+  born forgetful: the licence gate (`qt_require_licence`) for every write, and — for tokens
+  only — `qt_require_scope` plus `qt_token_may_reach`, which keeps a token inside
+  `v1/shop|catalog|bills|reports`. A leaked token therefore cannot extend a licence, free a
+  device seat or change settings, and an unpaid shop cannot bill from a browser either.
+
+### App
+
+- `类034.push` sends each bill with `table_no`, `notes`, `customer_code` and `deleted_at`,
+  and every line with `product_uuid` (new `SyncDao.productUuidById()`), so a bill that
+  started on a till now also decrements stock on the server. **`AppDatabase` stays at v11**:
+  no entity, no version, no migration — a new `@Query` only.
+- Timestamps travel verbatim (epoch millis or `Y-m-d H:i:s`) because `类034.millis()` already
+  reads both, and the server normalises only its own index columns.
+
+### Fixed
+
+- **`lib/schema.php` was never loaded.** `install.php` (and `tests/smoke.php`) call
+  `qt_schema_statements()` / `qt_schema_seed()`, which live in that file, so a first
+  deploy died with *call to an undefined function* before it created a single table. It is
+  required from `lib/support.php` now, and `tools/check_api_contract.py` fails the build if
+  any file in `lib/` is ever left unrequired again.
+
+### Docs, clients and tooling
+
+- `billing-api/API.md` — the integration guide (60-second start, error table, CORS, retry
+  and stock rules, Python/JS snippets, and the deliberate limits).
+- `billing-api/openapi.json` — generated from the PHP route table by
+  `tools/build_openapi.py`; `check_api_contract.py` now fails if the file, the route table
+  and `API.md` ever disagree.
+- `billing-api/client/quicktap-api.py` (stdlib only) and `quicktap-api.js` (browser + Node,
+  no dependencies), `billing-api/web/counter.html` (a working one-file bill screen: product
+  grid, cart, discount, print, today's summary), `billing-api/deploy.sh`
+  (tar-over-ssh upload + schema upgrade + public checks).
+
+### Known limit, on purpose
+
+A bill created from the website lives in the shop's server-side records — visible in the
+panel, in `v1/bills` and in the reports, and its stock changes reach the till — but it is
+**not** inserted into the phone's own Room ledger, so it does not appear in the app's bill
+history or reprint from the phone. Wiring that reverse direction (and the invoice numbering
+that goes with it) is a deliberate next step rather than a silent half-measure.
+
 ## 1.2.0 (versionCode 3) — billing-only edition
 
 The app is now a **billing system with a server-decided licence**, nothing else is

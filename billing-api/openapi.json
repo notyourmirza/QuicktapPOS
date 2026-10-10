@@ -1,0 +1,1875 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "QuickTap POS billing API",
+    "version": "1.3.0",
+    "description": "Licence, device seats, catalogue and bills for one shop, shared by the Android till, a website and a desktop program.\n\n**Two ways to authenticate.** The app sends `X-App-Id` + `X-Api-Key` and, after sign-in, `Authorization: Bearer <access_token>`. A website or desktop client sends a single `X-Api-Token: qt_pat_…` header, created per shop in the admin panel; it can be read-only.\n\n**Every answer uses one envelope:** `{\"success\":bool,\"message\":string,\"data\":mixed,\"code\":string,\"timestamp\":ms}`. Branch on `code`, show `message`. An unknown code must be treated as a refusal: the app does.\n\n**Money.** Totals of a bill written through `POST v1/bills` are calculated by the server from its lines, so no client can store an inconsistent bill. Stock of a sold product is decremented in the catalogue, and the till picks that up on its next sync.",
+    "contact": {
+      "name": "QuickTap POS billing"
+    },
+    "license": {
+      "name": "Proprietary"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://your-domain.com/api",
+      "description": "your host; must end without a slash"
+    }
+  ],
+  "security": [
+    {
+      "AppHeaders": []
+    },
+    {
+      "ApiToken": []
+    }
+  ],
+  "paths": {
+    "/v1/app/bootstrap": {
+      "get": {
+        "operationId": "qt_app_bootstrap",
+        "summary": "Start-up bootstrap",
+        "tags": [
+          "app"
+        ],
+        "x-auth-level": "app",
+        "x-requires-active-licence": false,
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/OK"
+          },
+          "401": {
+            "$ref": "#/components/responses/Denied"
+          },
+          "403": {
+            "$ref": "#/components/responses/Denied"
+          },
+          "409": {
+            "$ref": "#/components/responses/Denied"
+          }
+        },
+        "description": "Firebase options plus the API address to use from now on. Called once per install, from the hard-coded base URL."
+      }
+    },
+    "/v1/app/config": {
+      "get": {
+        "operationId": "qt_app_config",
+        "summary": "Remote configuration",
+        "tags": [
+          "app"
+        ],
+        "x-auth-level": "app",
+        "x-requires-active-licence": false,
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/OK"
+          },
+          "401": {
+            "$ref": "#/components/responses/Denied"
+          },
+          "403": {
+            "$ref": "#/components/responses/Denied"
+          },
+          "409": {
+            "$ref": "#/components/responses/Denied"
+          }
+        },
+        "description": "App name, logo, receipt template, support WhatsApp number, sync interval and the notices. A signed-in till gets its own shop name."
+      }
+    },
+    "/v1/auth/register": {
+      "post": {
+        "operationId": "qt_auth_register",
+        "summary": "Create a shop",
+        "tags": [
+          "auth"
+        ],
+        "x-auth-level": "app",
+        "x-requires-active-licence": false,
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/OK"
+          },
+          "401": {
+            "$ref": "#/components/responses/Denied"
+          },
+          "403": {
+            "$ref": "#/components/responses/Denied"
+          },
+          "409": {
+            "$ref": "#/components/responses/Denied"
+          }
+        },
+        "description": "Creates the shop, its owner, a PENDING licence row and the device binding in one call.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "shop_name",
+                  "username",
+                  "password"
+                ],
+                "properties": {
+                  "shop_name": {
+                    "type": "string",
+                    "maxLength": 60
+                  },
+                  "username": {
+                    "type": "string",
+                    "pattern": "^[a-z0-9._-]{4,32}$"
+                  },
+                  "password": {
+                    "type": "string",
+                    "minLength": 8
+                  },
+                  "full_name": {
+                    "type": "string"
+                  },
+                  "phone": {
+                    "type": "string",
+                    "description": "digits, optional leading +"
+                  },
+                  "device_name": {
+                    "type": "string"
+                  },
+                  "os_version": {
+                    "type": "string"
+                  },
+                  "app_version": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/auth/login": {
+      "post": {
+        "operationId": "qt_auth_login",
+        "summary": "Sign in",
+        "tags": [
+          "auth"
+        ],
+        "x-auth-level": "app",
+        "x-requires-active-licence": false,
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/OK"
+          },
+          "401": {
+            "$ref": "#/components/responses/Denied"
+          },
+          "403": {
+            "$ref": "#/components/responses/Denied"
+          },
+          "409": {
+            "$ref": "#/components/responses/Denied"
+          }
+        },
+        "description": "Password plus device check; returns a session and the licence state.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "username",
+                  "password"
+                ],
+                "properties": {
+                  "username": {
+                    "type": "string"
+                  },
+                  "password": {
+                    "type": "string"
+                  },
+                  "device_id": {
+                    "type": "string",
+                    "description": "also accepted from the X-Device-Id header"
+                  },
+                  "device_name": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/auth/refresh": {
+      "post": {
+        "operationId": "qt_auth_refresh",
+        "summary": "Renew the session",
+        "tags": [
+          "auth"
+        ],
+        "x-auth-level": "app",
+        "x-requires-active-licence": false,
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/OK"
+          },
+          "401": {
+            "$ref": "#/components/responses/Denied"
+          },
+          "403": {
+            "$ref": "#/components/responses/Denied"
+          },
+          "409": {
+            "$ref": "#/components/responses/Denied"
+          }
+        },
+        "description": "Exchanges a refresh token for a new access token and rotates it.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "refresh_token"
+                ],
+                "properties": {
+                  "refresh_token": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/auth/logout": {
+      "post": {
+        "operationId": "qt_auth_logout",
+        "summary": "End this session",
+        "tags": [
+          "auth"
+        ],
+        "x-auth-level": "user",
+        "x-requires-active-licence": false,
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/OK"
+          },
+          "401": {
+            "$ref": "#/components/responses/Denied"
+          },
+          "403": {
+            "$ref": "#/components/responses/Denied"
+          },
+          "409": {
+            "$ref": "#/components/responses/Denied"
+          }
+        },
+        "description": "Revokes the refresh tokens of the calling device.",
+        "security": [
+          {
+            "AppHeaders": []
+          },
+          {
+            "PhoneSession": []
+          }
+        ]
+      }
+    },
+    "/v1/auth/me": {
+      "get": {
+        "operationId": "qt_auth_me",
+        "summary": "Profile",
+        "tags": [
+          "auth"
+        ],
+        "x-auth-level": "user",
+        "x-requires-active-licence": false,
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/OK"
+          },
+          "401": {
+            "$ref": "#/components/responses/Denied"
+          },
+          "403": {
+            "$ref": "#/components/responses/Denied"
+          },
+          "409": {
+            "$ref": "#/components/responses/Denied"
+          }
+        },
+        "description": "Role, name, shop and the fingerprint flag — the fields the app caches.",
+        "security": [
+          {
+            "AppHeaders": []
+          },
+          {
+            "PhoneSession": []
+          }
+        ]
+      }
+    },
+    "/v1/auth/unlock": {
+      "post": {
+        "operationId": "qt_auth_unlock",
+        "summary": "Verify the password",
+        "tags": [
+          "auth"
+        ],
+        "x-auth-level": "user",
+        "x-requires-active-licence": false,
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/OK"
+          },
+          "401": {
+            "$ref": "#/components/responses/Denied"
+          },
+          "403": {
+            "$ref": "#/components/responses/Denied"
+          },
+          "409": {
+            "$ref": "#/components/responses/Denied"
+          }
+        },
+        "description": "The auto-lock screen proves the password against the server.",
+        "security": [
+          {
+            "AppHeaders": []
+          },
+          {
+            "PhoneSession": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "password"
+                ],
+                "properties": {
+                  "password": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/auth/fingerprint": {
+      "post": {
+        "operationId": "qt_auth_fingerprint",
+        "summary": "Fingerprint preference",
+        "tags": [
+          "auth"
+        ],
+        "x-auth-level": "user",
+        "x-requires-active-licence": false,
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/OK"
+          },
+          "401": {
+            "$ref": "#/components/responses/Denied"
+          },
+          "403": {
+            "$ref": "#/components/responses/Denied"
+          },
+          "409": {
+            "$ref": "#/components/responses/Denied"
+          }
+        },
+        "description": "Remembers whether this cashier wants biometric unlock.",
+        "security": [
+          {
+            "AppHeaders": []
+          },
+          {
+            "PhoneSession": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "enabled"
+                ],
+                "properties": {
+                  "enabled": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/license/status": {
+      "get": {
+        "operationId": "qt_license_status",
+        "summary": "Licence state",
+        "tags": [
+          "license"
+        ],
+        "x-auth-level": "user",
+        "x-requires-active-licence": false,
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/OK"
+          },
+          "401": {
+            "$ref": "#/components/responses/Denied"
+          },
+          "403": {
+            "$ref": "#/components/responses/Denied"
+          },
+          "409": {
+            "$ref": "#/components/responses/Denied"
+          }
+        },
+        "description": "THE answer the whole app is built around: ACTIVE, PENDING, EXPIRED, REVOKED, SUSPENDED, BLOCKED or UNKNOWN.",
+        "security": [
+          {
+            "AppHeaders": []
+          },
+          {
+            "PhoneSession": []
+          }
+        ]
+      }
+    },
+    "/v1/license/verify": {
+      "post": {
+        "operationId": "qt_license_verify",
+        "summary": "Redeem a licence key",
+        "tags": [
+          "license"
+        ],
+        "x-auth-level": "user",
+        "x-requires-active-licence": false,
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/OK"
+          },
+          "401": {
+            "$ref": "#/components/responses/Denied"
+          },
+          "403": {
+            "$ref": "#/components/responses/Denied"
+          },
+          "409": {
+            "$ref": "#/components/responses/Denied"
+          }
+        },
+        "description": "Activates a shop with its own key or an unused activation code. Reachable while PENDING or EXPIRED.",
+        "security": [
+          {
+            "AppHeaders": []
+          },
+          {
+            "PhoneSession": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "license_key"
+                ],
+                "properties": {
+                  "license_key": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/license/confirm": {
+      "post": {
+        "operationId": "qt_license_confirm",
+        "summary": "Confirm the licence",
+        "tags": [
+          "license"
+        ],
+        "x-auth-level": "user",
+        "x-requires-active-licence": false,
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/OK"
+          },
+          "401": {
+            "$ref": "#/components/responses/Denied"
+          },
+          "403": {
+            "$ref": "#/components/responses/Denied"
+          },
+          "409": {
+            "$ref": "#/components/responses/Denied"
+          }
+        },
+        "description": "The username + password step that finishes an activation on a device.",
+        "security": [
+          {
+            "AppHeaders": []
+          },
+          {
+            "PhoneSession": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "password"
+                ],
+                "properties": {
+                  "username": {
+                    "type": "string"
+                  },
+                  "password": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/plans": {
+      "get": {
+        "operationId": "qt_plans",
+        "summary": "Plan catalogue",
+        "tags": [
+          "plans"
+        ],
+        "x-auth-level": "app",
+        "x-requires-active-licence": false,
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/OK"
+          },
+          "401": {
+            "$ref": "#/components/responses/Denied"
+          },
+          "403": {
+            "$ref": "#/components/responses/Denied"
+          },
+          "409": {
+            "$ref": "#/components/responses/Denied"
+          }
+        },
+        "description": "What the shop may buy, and what it has now, including the device seat."
+      }
+    },
+    "/v1/devices": {
+      "get": {
+        "operationId": "qt_devices_list",
+        "summary": "Tills of this shop",
+        "tags": [
+          "devices"
+        ],
+        "x-auth-level": "user",
+        "x-requires-active-licence": false,
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/OK"
+          },
+          "401": {
+            "$ref": "#/components/responses/Denied"
+          },
+          "403": {
+            "$ref": "#/components/responses/Denied"
+          },
+          "409": {
+            "$ref": "#/components/responses/Denied"
+          }
+        },
+        "description": "Device accounting: model, versions, first/last seen, check count, and used/limit seats.",
+        "security": [
+          {
+            "AppHeaders": []
+          },
+          {
+            "PhoneSession": []
+          }
+        ]
+      }
+    },
+    "/v1/devices/deactivate": {
+      "post": {
+        "operationId": "qt_devices_deactivate",
+        "summary": "Free a device seat",
+        "tags": [
+          "devices"
+        ],
+        "x-auth-level": "user",
+        "x-requires-active-licence": false,
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/OK"
+          },
+          "401": {
+            "$ref": "#/components/responses/Denied"
+          },
+          "403": {
+            "$ref": "#/components/responses/Denied"
+          },
+          "409": {
+            "$ref": "#/components/responses/Denied"
+          }
+        },
+        "description": "Releases this till (or a listed one) so a replacement can be linked; its sessions are revoked.",
+        "security": [
+          {
+            "AppHeaders": []
+          },
+          {
+            "PhoneSession": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "device_id": {
+                    "type": "string",
+                    "description": "blank = this device"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/settings/app-name": {
+      "post": {
+        "operationId": "qt_settings_app_name",
+        "summary": "Shop name override",
+        "tags": [
+          "settings"
+        ],
+        "x-auth-level": "user",
+        "x-requires-active-licence": false,
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/OK"
+          },
+          "401": {
+            "$ref": "#/components/responses/Denied"
+          },
+          "403": {
+            "$ref": "#/components/responses/Denied"
+          },
+          "409": {
+            "$ref": "#/components/responses/Denied"
+          }
+        },
+        "description": "Per-shop app name shown on the login screen and printed on receipts.",
+        "security": [
+          {
+            "AppHeaders": []
+          },
+          {
+            "PhoneSession": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "app_name"
+                ],
+                "properties": {
+                  "app_name": {
+                    "type": "string",
+                    "maxLength": 40
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/notifications": {
+      "get": {
+        "operationId": "qt_notifications",
+        "summary": "Notices",
+        "tags": [
+          "notifications"
+        ],
+        "x-auth-level": "user",
+        "x-requires-active-licence": false,
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/OK"
+          },
+          "401": {
+            "$ref": "#/components/responses/Denied"
+          },
+          "403": {
+            "$ref": "#/components/responses/Denied"
+          },
+          "409": {
+            "$ref": "#/components/responses/Denied"
+          }
+        },
+        "description": "Active announcements for the notification bell.",
+        "security": [
+          {
+            "AppHeaders": []
+          },
+          {
+            "PhoneSession": []
+          }
+        ]
+      }
+    },
+    "/v1/shop": {
+      "get": {
+        "operationId": "qt_shop_profile",
+        "summary": "Shop profile (any client)",
+        "tags": [
+          "shop"
+        ],
+        "x-auth-level": "shop",
+        "x-requires-active-licence": false,
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/OK"
+          },
+          "401": {
+            "$ref": "#/components/responses/Denied"
+          },
+          "403": {
+            "$ref": "#/components/responses/Denied"
+          },
+          "409": {
+            "$ref": "#/components/responses/Denied"
+          }
+        },
+        "description": "Who this token belongs to: branding, currency, licence state and the token's scopes.",
+        "security": [
+          {
+            "ApiToken": []
+          },
+          {
+            "PhoneSession": []
+          }
+        ]
+      }
+    },
+    "/v1/catalog": {
+      "get": {
+        "operationId": "qt_catalog_list",
+        "summary": "Catalogue (any client)",
+        "tags": [
+          "catalog"
+        ],
+        "x-auth-level": "shop",
+        "x-requires-active-licence": false,
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/OK"
+          },
+          "401": {
+            "$ref": "#/components/responses/Denied"
+          },
+          "403": {
+            "$ref": "#/components/responses/Denied"
+          },
+          "409": {
+            "$ref": "#/components/responses/Denied"
+          }
+        },
+        "description": "Categories and products of the shop — the same rows the till pushes and pulls.",
+        "security": [
+          {
+            "ApiToken": []
+          },
+          {
+            "PhoneSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "description": "substring match inside the payload",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "include_deleted",
+            "in": "query",
+            "required": false,
+            "description": "1 to include deleted rows",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ]
+      }
+    },
+    "/v1/catalog/products": {
+      "post": {
+        "operationId": "qt_catalog_save_product",
+        "summary": "Save products",
+        "tags": [
+          "catalog"
+        ],
+        "x-auth-level": "shop",
+        "x-requires-active-licence": true,
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/OK"
+          },
+          "401": {
+            "$ref": "#/components/responses/Denied"
+          },
+          "403": {
+            "$ref": "#/components/responses/Denied"
+          },
+          "409": {
+            "$ref": "#/components/responses/Denied"
+          }
+        },
+        "description": "Create or update one product, or a batch. Stock here reaches the till on its next sync.\n\nNeeds an ACTIVE licence: a PENDING or expired shop gets `LICENSE_PENDING` / `LICENSE_EXPIRED` with HTTP 403.",
+        "security": [
+          {
+            "ApiToken": []
+          },
+          {
+            "PhoneSession": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "uuid": {
+                    "type": "string",
+                    "description": "omit to create, send to update"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "category_uuid": {
+                    "type": "string"
+                  },
+                  "price": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "barcode": {
+                    "type": "string"
+                  },
+                  "stock": {
+                    "type": "integer",
+                    "description": "-1 = not tracked"
+                  },
+                  "is_active": {
+                    "type": "integer",
+                    "enum": [
+                      0,
+                      1
+                    ]
+                  },
+                  "deleted_at": {
+                    "type": "string",
+                    "description": "any value = soft delete"
+                  },
+                  "products": {
+                    "type": "array",
+                    "items": {
+                      "type": "object"
+                    },
+                    "description": "or a batch instead of one record"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/catalog/categories": {
+      "post": {
+        "operationId": "qt_catalog_save_category",
+        "summary": "Save categories",
+        "tags": [
+          "catalog"
+        ],
+        "x-auth-level": "shop",
+        "x-requires-active-licence": true,
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/OK"
+          },
+          "401": {
+            "$ref": "#/components/responses/Denied"
+          },
+          "403": {
+            "$ref": "#/components/responses/Denied"
+          },
+          "409": {
+            "$ref": "#/components/responses/Denied"
+          }
+        },
+        "description": "Create or update one category, or a batch.\n\nNeeds an ACTIVE licence: a PENDING or expired shop gets `LICENSE_PENDING` / `LICENSE_EXPIRED` with HTTP 403.",
+        "security": [
+          {
+            "ApiToken": []
+          },
+          {
+            "PhoneSession": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "uuid": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "sort_order": {
+                    "type": "integer"
+                  },
+                  "deleted_at": {
+                    "type": "string"
+                  },
+                  "categories": {
+                    "type": "array",
+                    "items": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/bills": {
+      "get": {
+        "operationId": "qt_bills_list",
+        "summary": "List bills",
+        "tags": [
+          "bills"
+        ],
+        "x-auth-level": "shop",
+        "x-requires-active-licence": false,
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/OK"
+          },
+          "401": {
+            "$ref": "#/components/responses/Denied"
+          },
+          "403": {
+            "$ref": "#/components/responses/Denied"
+          },
+          "409": {
+            "$ref": "#/components/responses/Denied"
+          }
+        },
+        "description": "Newest first, filtered by date range and free-text search over invoice, customer and items.",
+        "security": [
+          {
+            "ApiToken": []
+          },
+          {
+            "PhoneSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "description": "YYYY-MM-DD or epoch millis (inclusive)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "description": "YYYY-MM-DD or epoch millis (inclusive)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "page size, max 500 (default 50)",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "description": "page offset",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "description": "matches invoice no, customer name/phone and item names",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "include_deleted",
+            "in": "query",
+            "required": false,
+            "description": "1 to include voided bills",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "items"
+                ],
+                "properties": {
+                  "uuid": {
+                    "type": "string",
+                    "description": "send the same uuid twice and the bill is replaced, not duplicated"
+                  },
+                  "invoice_no": {
+                    "type": "string",
+                    "description": "generated as INV-YYYYMMDD-### when omitted"
+                  },
+                  "order_type": {
+                    "type": "string",
+                    "enum": [
+                      "DINE_IN",
+                      "TAKE_AWAY",
+                      "DELIVERY"
+                    ]
+                  },
+                  "table_no": {
+                    "type": "string"
+                  },
+                  "customer_name": {
+                    "type": "string"
+                  },
+                  "customer_phone": {
+                    "type": "string"
+                  },
+                  "customer_code": {
+                    "type": "integer"
+                  },
+                  "address": {
+                    "type": "string",
+                    "description": "delivery address, as the till stores it"
+                  },
+                  "notes": {
+                    "type": "string"
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "paid",
+                      "unpaid"
+                    ]
+                  },
+                  "paid": {
+                    "type": "boolean"
+                  },
+                  "payment_method": {
+                    "type": "string",
+                    "enum": [
+                      "CASH",
+                      "CARD",
+                      "WALLET",
+                      "BANK",
+                      "CREDIT"
+                    ]
+                  },
+                  "discount": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "discount_percent": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 100
+                  },
+                  "tax": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "tax_percent": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 100
+                  },
+                  "created_at": {
+                    "type": "string",
+                    "description": "epoch millis or 'YYYY-MM-DD HH:MM:SS'; default now"
+                  },
+                  "items": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                      "$ref": "#/components/schemas/BillLine"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "qt_bills_save",
+        "summary": "Write a bill",
+        "tags": [
+          "bills"
+        ],
+        "x-auth-level": "shop",
+        "x-requires-active-licence": true,
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/OK"
+          },
+          "401": {
+            "$ref": "#/components/responses/Denied"
+          },
+          "403": {
+            "$ref": "#/components/responses/Denied"
+          },
+          "409": {
+            "$ref": "#/components/responses/Denied"
+          }
+        },
+        "description": "Placeholder\n\nNeeds an ACTIVE licence: a PENDING or expired shop gets `LICENSE_PENDING` / `LICENSE_EXPIRED` with HTTP 403.",
+        "security": [
+          {
+            "ApiToken": []
+          },
+          {
+            "PhoneSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "description": "YYYY-MM-DD or epoch millis (inclusive)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "description": "YYYY-MM-DD or epoch millis (inclusive)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "page size, max 500 (default 50)",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "description": "page offset",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "description": "matches invoice no, customer name/phone and item names",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "include_deleted",
+            "in": "query",
+            "required": false,
+            "description": "1 to include voided bills",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "items"
+                ],
+                "properties": {
+                  "uuid": {
+                    "type": "string",
+                    "description": "send the same uuid twice and the bill is replaced, not duplicated"
+                  },
+                  "invoice_no": {
+                    "type": "string",
+                    "description": "generated as INV-YYYYMMDD-### when omitted"
+                  },
+                  "order_type": {
+                    "type": "string",
+                    "enum": [
+                      "DINE_IN",
+                      "TAKE_AWAY",
+                      "DELIVERY"
+                    ]
+                  },
+                  "table_no": {
+                    "type": "string"
+                  },
+                  "customer_name": {
+                    "type": "string"
+                  },
+                  "customer_phone": {
+                    "type": "string"
+                  },
+                  "customer_code": {
+                    "type": "integer"
+                  },
+                  "address": {
+                    "type": "string",
+                    "description": "delivery address, as the till stores it"
+                  },
+                  "notes": {
+                    "type": "string"
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "paid",
+                      "unpaid"
+                    ]
+                  },
+                  "paid": {
+                    "type": "boolean"
+                  },
+                  "payment_method": {
+                    "type": "string",
+                    "enum": [
+                      "CASH",
+                      "CARD",
+                      "WALLET",
+                      "BANK",
+                      "CREDIT"
+                    ]
+                  },
+                  "discount": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "discount_percent": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 100
+                  },
+                  "tax": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "tax_percent": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 100
+                  },
+                  "created_at": {
+                    "type": "string",
+                    "description": "epoch millis or 'YYYY-MM-DD HH:MM:SS'; default now"
+                  },
+                  "items": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                      "$ref": "#/components/schemas/BillLine"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/reports/day": {
+      "get": {
+        "operationId": "qt_report_day",
+        "summary": "One day of trading",
+        "tags": [
+          "reports"
+        ],
+        "x-auth-level": "shop",
+        "x-requires-active-licence": false,
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/OK"
+          },
+          "401": {
+            "$ref": "#/components/responses/Denied"
+          },
+          "403": {
+            "$ref": "#/components/responses/Denied"
+          },
+          "409": {
+            "$ref": "#/components/responses/Denied"
+          }
+        },
+        "description": "Revenue, paid/unpaid, average bill, mix by payment method and order type, top products, hourly buckets.",
+        "security": [
+          {
+            "ApiToken": []
+          },
+          {
+            "PhoneSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "date",
+            "in": "query",
+            "required": false,
+            "description": "YYYY-MM-DD, default today",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/v1/reports/range": {
+      "get": {
+        "operationId": "qt_report_range",
+        "summary": "A period of trading",
+        "tags": [
+          "reports"
+        ],
+        "x-auth-level": "shop",
+        "x-requires-active-licence": false,
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/OK"
+          },
+          "401": {
+            "$ref": "#/components/responses/Denied"
+          },
+          "403": {
+            "$ref": "#/components/responses/Denied"
+          },
+          "409": {
+            "$ref": "#/components/responses/Denied"
+          }
+        },
+        "description": "The same numbers per day, for a week, a month or a quarter.",
+        "security": [
+          {
+            "ApiToken": []
+          },
+          {
+            "PhoneSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "description": "YYYY-MM-DD",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "description": "YYYY-MM-DD",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/v1/sync/push": {
+      "post": {
+        "operationId": "qt_sync_push",
+        "summary": "Push local changes",
+        "tags": [
+          "sync"
+        ],
+        "x-auth-level": "user",
+        "x-requires-active-licence": true,
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/OK"
+          },
+          "401": {
+            "$ref": "#/components/responses/Denied"
+          },
+          "403": {
+            "$ref": "#/components/responses/Denied"
+          },
+          "409": {
+            "$ref": "#/components/responses/Denied"
+          }
+        },
+        "description": "The till uploads changed categories, products and bills; the server upserts by uuid.\n\nNeeds an ACTIVE licence: a PENDING or expired shop gets `LICENSE_PENDING` / `LICENSE_EXPIRED` with HTTP 403.",
+        "security": [
+          {
+            "AppHeaders": []
+          },
+          {
+            "PhoneSession": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "categories": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/CategoryRecord"
+                    }
+                  },
+                  "products": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/ProductRecord"
+                    }
+                  },
+                  "orders": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/BillRecord"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/sync/pull": {
+      "get": {
+        "operationId": "qt_sync_pull",
+        "summary": "Pull other devices' changes",
+        "tags": [
+          "sync"
+        ],
+        "x-auth-level": "user",
+        "x-requires-active-licence": true,
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/OK"
+          },
+          "401": {
+            "$ref": "#/components/responses/Denied"
+          },
+          "403": {
+            "$ref": "#/components/responses/Denied"
+          },
+          "409": {
+            "$ref": "#/components/responses/Denied"
+          }
+        },
+        "description": "Everything that changed after the caller's cursor, plus shared settings.\n\nNeeds an ACTIVE licence: a PENDING or expired shop gets `LICENSE_PENDING` / `LICENSE_EXPIRED` with HTTP 403.",
+        "security": [
+          {
+            "AppHeaders": []
+          },
+          {
+            "PhoneSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "since",
+            "in": "query",
+            "required": false,
+            "description": "epoch millis; the caller's own cursor",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "AppHeaders": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-App-Id",
+        "description": "Build credentials: X-App-Id together with X-Api-Key."
+      },
+      "ApiToken": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-Api-Token",
+        "description": "A shop's `qt_pat_…` token from the admin panel (also accepted as `Authorization: Bearer qt_pat_…`)."
+      },
+      "PhoneSession": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "The access token a till received from login or register."
+      }
+    },
+    "schemas": {
+      "Envelope": {
+        "type": "object",
+        "required": [
+          "success",
+          "message",
+          "code"
+        ],
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string",
+            "description": "safe to show the user as-is"
+          },
+          "code": {
+            "type": "string",
+            "description": "machine-readable, e.g. OK, LICENSE_EXPIRED, DEVICE_LIMIT"
+          },
+          "data": {
+            "nullable": true
+          },
+          "timestamp": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "LicenceState": {
+        "type": "object",
+        "properties": {
+          "license_status": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "PENDING",
+              "EXPIRED",
+              "REVOKED",
+              "SUSPENDED",
+              "BLOCKED",
+              "UNKNOWN"
+            ]
+          },
+          "unlocked": {
+            "type": "boolean"
+          },
+          "confirmed": {
+            "type": "boolean"
+          },
+          "duration_label": {
+            "type": "string"
+          },
+          "expires_at_ms": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "server_time_ms": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "days_left": {
+            "type": "integer",
+            "nullable": true,
+            "description": "null = lifetime"
+          },
+          "device_seat": {
+            "type": "object",
+            "properties": {
+              "used": {
+                "type": "integer"
+              },
+              "limit": {
+                "type": "integer"
+              }
+            }
+          }
+        }
+      },
+      "CategoryRecord": {
+        "type": "object",
+        "properties": {
+          "uuid": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "sort_order": {
+            "type": "integer"
+          },
+          "updated_at": {
+            "type": "string",
+            "description": "epoch millis or 'YYYY-MM-DD HH:MM:SS'"
+          },
+          "deleted_at": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "ProductRecord": {
+        "type": "object",
+        "properties": {
+          "uuid": {
+            "type": "string"
+          },
+          "category_uuid": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "price": {
+            "type": "number"
+          },
+          "barcode": {
+            "type": "string",
+            "nullable": true
+          },
+          "stock": {
+            "type": "integer",
+            "description": "-1 = not tracked"
+          },
+          "is_active": {
+            "type": "integer",
+            "enum": [
+              0,
+              1
+            ]
+          },
+          "updated_at": {
+            "$ref": "#/components/schemas/CategoryRecord/properties/updated_at"
+          },
+          "deleted_at": {
+            "$ref": "#/components/schemas/CategoryRecord/properties/deleted_at"
+          }
+        }
+      },
+      "BillLine": {
+        "type": "object",
+        "required": [
+          "name",
+          "price",
+          "qty"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "price": {
+            "type": "number",
+            "minimum": 0
+          },
+          "qty": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "product_uuid": {
+            "type": "string",
+            "description": "send it and the product's stock is decremented"
+          },
+          "line_total": {
+            "type": "number",
+            "description": "read-only echo of price × qty"
+          }
+        }
+      },
+      "BillRecord": {
+        "type": "object",
+        "properties": {
+          "uuid": {
+            "type": "string"
+          },
+          "invoice_no": {
+            "type": "string"
+          },
+          "created_at": {
+            "description": "epoch millis or 'YYYY-MM-DD HH:MM:SS'"
+          },
+          "created_at_ms": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "order_type": {
+            "type": "string"
+          },
+          "table_no": {
+            "type": "string"
+          },
+          "customer_name": {
+            "type": "string"
+          },
+          "customer_phone": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string",
+            "description": "delivery address, as the till stores it"
+          },
+          "customer_code": {
+            "type": "integer"
+          },
+          "notes": {
+            "type": "string"
+          },
+          "subtotal": {
+            "type": "number"
+          },
+          "discount": {
+            "type": "number"
+          },
+          "tax": {
+            "type": "number"
+          },
+          "total": {
+            "type": "number"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "paid",
+              "unpaid"
+            ]
+          },
+          "payment_method": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string",
+            "description": "'till' or 'api'"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BillLine"
+            }
+          }
+        }
+      },
+      "Error": {
+        "$ref": "#/components/schemas/Envelope"
+      }
+    },
+    "responses": {
+      "OK": {
+        "description": "Envelope with success=true; the data shape is described per endpoint.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Envelope"
+            }
+          }
+        }
+      },
+      "Denied": {
+        "description": "A rule refused the call. Read `code`, show `message`.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Envelope"
+            }
+          }
+        }
+      }
+    }
+  }
+}

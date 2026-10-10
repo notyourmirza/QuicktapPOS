@@ -80,6 +80,23 @@ foreach (qt_schema_statements($driver) as $statement) {
 }
 $say(sprintf('Schema ready (%d statements applied).', $created));
 
+// Columns added after the first release: CREATE TABLE IF NOT EXISTS will not touch
+// an existing table, so each one gets its own guarded ALTER.
+foreach ([
+    'sync_records' => ['occurred_at DATETIME NULL', 'occurred_ms INTEGER NOT NULL DEFAULT 0'],
+    'app_devices' => ['seen_count INTEGER NOT NULL DEFAULT 0', 'released_at DATETIME NULL'],
+    'licences' => ['activated_at DATETIME NULL'],
+] as $table => $columns) {
+    foreach ($columns as $column) {
+        try {
+            $pdo->exec('ALTER TABLE `' . $table . '` ADD COLUMN `'
+                . explode(' ', $column)[0] . '` ' . substr($column, strlen(explode(' ', $column)[0]) + 1));
+        } catch (Throwable $ignored) {
+            // "duplicate column name" is the normal, expected answer on re-runs.
+        }
+    }
+}
+
 $tables = $pdo->query($driver === 'sqlite'
     ? "SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name"
     : 'SHOW TABLES')->fetchAll(PDO::FETCH_COLUMN);
