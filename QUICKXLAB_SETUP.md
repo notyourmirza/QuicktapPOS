@@ -58,9 +58,23 @@ live site's files, you are in the right place.
 As of 2026-10-10 the two domains are on **different machines**:
 
 ```
-quickxlab.com  -> 77.37.76.45     (the marketing site)
-aifinzo.pro    -> 145.79.25.20    (the current billing-api and its MySQL database)
+quickxlab.com  -> 77.37.76.45  and, on a second lookup, 148.135.128.76
+aifinzo.pro    -> 145.79.25.20     (the current billing-api, and its MySQL database)
 ```
+
+Two names, and `quickxlab.com` answered with **more than one address** — so treat the numbers above
+as what a lookup returned on 2026-10-10, not as fact. Confirm on the machines themselves, which is
+the only answer that matters, because the question is really *"does the server I am about to deploy
+onto already have `shops`/`licences`/`sync_records` on its localhost MySQL?"*:
+
+```bash
+curl -s --max-time 5 ifconfig.me; echo          # what this server thinks its IP is
+ls ~/public_html/api 2>/dev/null | head -3      # the old billing-api? then this IS that server
+mysql -h127.0.0.1 -uquicktap -p -e "select count(*) from quicktap.shops;" 2>&1 | tail -2
+```
+
+That last line decides everything: if `127.0.0.1` on the box you are deploying to answers with a
+row count, option A is available and it is the right one.
 
 The portal needs the database that holds `shops`, `licences`, `sync_records`. So pick one:
 

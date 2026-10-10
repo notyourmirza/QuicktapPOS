@@ -20,8 +20,11 @@ marketing site — same rows, same licence rules, one deploy.
   that says whether a till will accept this server. `--dry-run` prints the plan; `--check`
   re-verifies an existing deploy and changes nothing; `--with-vendor` covers a host with no
   composer. An interrupted run is repaired by running it again.
-- It refuses to guess about the database. `quickxlab.com` resolves to `77.37.76.45` while
-  `aifinzo.pro` — where the billing MySQL currently lives — is `145.79.25.20`: two machines. So the
+- It refuses to guess about the database. `quickxlab.com` did not resolve to the same machine as
+  `aifinzo.pro` — where the billing MySQL currently lives (`145.79.25.20`) — and one lookup even
+  returned a second address for it, so the doc makes you confirm on the box
+  (`mysql -h127.0.0.1 -uquicktap -p -e "select count(*) from quicktap.shops;"`) instead of trusting
+  an IP from a chat. So the
   probe is `php artisan db:show` **before** anything is written, and `QUICKXLAB_SETUP.md` opens with
   options A/B/C (run the portal next to the database; reach across via Remote MySQL; or move the
   database) plus the warning that matters most: two live copies of one billing database is the only
