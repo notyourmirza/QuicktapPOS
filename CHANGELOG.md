@@ -1,5 +1,60 @@
 # QuickTap POS — Changelog
 
+## 1.3.1 (versionCode 5) — the whole business moves to `quickxlab.com`
+
+The billing service, the admin panel and the public site were three things on two hosts. They
+are now **one Laravel 12 application** (`quickxlab/`) on one MySQL database: the till's JSON
+contract, the counter a shopkeeper sees in a browser, the desktop/website token API and the
+marketing site — same rows, same licence rules, one deploy.
+
+### New: `quickxlab/` (Laravel 12 + MySQL, Blade, no build step)
+
+- **The API is Laravel now.** All 26 `v1/*` endpoints are ported on the same paths and with
+  the same envelope (`success, message, data, code, timestamp`) and the same `code` values, so
+  an existing APK, `billing-api/web/counter.html` and both client libraries keep working
+  against `https://quickxlab.com/api/`. `tools/check_laravel_mirror.py` proves the port loses
+  no path: it diffs the Laravel route table against `billing-api/openapi.json`.
+- **Same engine, same rules.** `app/Support/Billing.php` carries the licence state machine,
+  seat maths, key generation, token hashing, invoice numbering and stock diffing across
+  unchanged; `app/Support/Gate.php` resolves either a till's JWT or a shop's `qt_pat_…` token,
+  enforces `read`/`write` scopes and keeps a token inside `v1/shop|catalog|bills|reports`.
+  Writes still need a live licence, and `X-App-Id`/`X-Api-Key` are still required for the
+  app-only endpoints.
+- **Admin panel** at `/admin` — dashboard (who expires in 7 days, today's bills and revenue,
+  open tickets), shops (search by shop *or* owner username, licence history, extend/lifetime/
+  revoke, block/suspend, plan, currency, printed name, owner password reset, per-shop audit),
+  devices and seats (free a seat, block a till), licence codes (batch-generate, or attach one
+  straight to a shop), plans (price, yearly price, seats, feature lines — the app's store screen
+  reads the same rows), API tokens, bills with CSV export, revenue per day, audit log, site
+  pages, notices, app settings and APK publishing, and the support queue. It signs in against
+  the `admin_users` table the old panel created, so an existing login keeps working.
+- **Public site in Blade**, rebuilt from what was live: hero, a live counter that ticks over
+  *today's real* platform totals from `sync_records`, packages from the `plans` table, field
+  photos, the offline-first hardware/trust section, the referral block, the 3-minute setup
+  flow and the support desk — plus `/plans`, `/download` (offers exactly the APK the panel
+  uploaded), `/software?slug=…` from editable `site_pages`, `/support` (writes
+  `support_tickets`) and `/developers`, whose endpoint table is rendered from the live route
+  list so it can never document a route that does not exist.
+- **`/account`, the shop owner's own screen**: licence state and days left, seat list with a
+  self-service **free seat** for a lost phone (revokes that till's sessions in the same
+  request), today's totals, recent bills, the printed receipt name, and create/revoke their own
+  API tokens. A shop can read and rename, never extend.
+- **Sign-up on the site creates an app account.** `Billing::createShop()` is the one code path
+  for `/signup` and `POST v1/auth/register`, so a shop that registered in a browser signs in on
+  the phone with those credentials and gets the same PENDING-licence rules.
+- **Deploy is `migrate` + `db:seed`, both non-destructive**: every `CREATE TABLE` is guarded by
+  `Schema::hasTable`, added columns by `Schema::hasColumn`, and the seeder only fills holes.
+  `QUICKXLAB_SETUP.md` is the runbook — including moving the previous site to
+  `public_html/tem/` and a rollback that deletes nothing.
+
+### App
+
+- `BOOTSTRAP_BASE_URL` → `https://quickxlab.com/api/`. It is the *last* fallback in `类018`'s
+  order (Remote Config → cached last known-good → this constant), so existing installs move by
+  publishing `api_base_url` in Remote Config — no new APK required, and `aifinzo.pro/api/`
+  stays alive as a signpost on the same database.
+
+
 ## 1.3.0 (versionCode 4) — the same billing from a website and from a PC
 
 The billing system was locked to the Android till. It is now one service the phone, a web

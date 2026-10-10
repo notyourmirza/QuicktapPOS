@@ -1,0 +1,37 @@
+# The document root on this host is public_html/, and the whole app is uploaded inside it.
+# Every request therefore has to be rewritten into public/ — while /tem/ (the archived
+# previous site) is left alone so old links and images keep working after the move.
+#
+# If you can set the vhost's document root to public_html/public, delete this file:
+# Laravel needs no rewrite of its own, only public/.htaccess.
+
+Options -Indexes -MultiViews
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+
+  # 1. the archived site is served straight from public_html/tem — never into the app
+  RewriteCond %{REQUEST_URI} !^/tem(/|$) [NC]
+  # 2. do not rewrite requests that already point at public/
+  RewriteCond %{REQUEST_URI} !^/public/ [NC]
+  # 3. anything that exists under public/ (css, js, images, apk) is served as a file
+  RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>
+
+# Belt and braces: even if the rewrite above is bypassed (an Alias, a different docroot),
+# the framework's own folders must never be readable over HTTP.
+RedirectMatch 404 ^/(app|bootstrap|config|database|routes|storage|tests|vendor)(/|$)
+
+<Files ".env">
+  Require all denied
+</Files>
+<Files ".env.example">
+  Require all denied
+</Files>
+<FilesMatch "\.(md|json|lock|neon|ini|log|sql)$">
+  # composer.json / package metadata / a stray dump: nothing out here is a public page.
+  Require all denied
+</FilesMatch>
+<FilesMatch "^(composer\.json|composer\.lock|package\.json)$">
+  Require all denied
+</FilesMatch>

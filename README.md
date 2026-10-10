@@ -18,6 +18,9 @@ plan catalogue, the sync interval and the notices in the bell.
 - MVVM: Activity/Fragment → ViewModel → Repository → DAO
 - Bluetooth ESC/POS printing over SPP (58 mm and 80 mm)
 - One server for licence + config + billing records:
+  [`quickxlab/`](quickxlab/README.md) — a Laravel 12 app that serves the site, the admin
+  panel, a shop owner's `/account` **and** the `v1` API the till calls, on one MySQL database
+  ([`QUICKXLAB_SETUP.md`](QUICKXLAB_SETUP.md)); or
   [`billing-api/`](billing-api/README.md) (PHP 8 + MySQL), callable from the phone, a
   browser page or any desktop language that speaks HTTPS/JSON
 - Google Drive REST v3 into `appDataFolder`, encrypted with the device keystore or a

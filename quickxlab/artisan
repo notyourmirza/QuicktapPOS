@@ -1,0 +1,19 @@
+#!/usr/bin/env php
+<?php
+/**
+ * The usual Laravel entry point, kept in the repository because a shared host runs
+ * `php artisan migrate --force` through this file — there is no composer-created
+ * shortcut for it there.
+ */
+
+use Symfony\Component\Console\Input\ArgvInput;
+
+define('LARAVEL_START', microtime(true));
+
+require __DIR__ . '/vendor/autoload.php';
+
+$app = require_once __DIR__ . '/bootstrap/app.php';
+
+$status = $app->handleCommand(new ArgvInput);
+
+exit($status);

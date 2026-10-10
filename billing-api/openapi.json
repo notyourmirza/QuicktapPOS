@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "QuickTap POS billing API",
-    "version": "1.3.0",
+    "version": "1.3.1",
     "description": "Licence, device seats, catalogue and bills for one shop, shared by the Android till, a website and a desktop program.\n\n**Two ways to authenticate.** The app sends `X-App-Id` + `X-Api-Key` and, after sign-in, `Authorization: Bearer <access_token>`. A website or desktop client sends a single `X-Api-Token: qt_pat_…` header, created per shop in the admin panel; it can be read-only.\n\n**Every answer uses one envelope:** `{\"success\":bool,\"message\":string,\"data\":mixed,\"code\":string,\"timestamp\":ms}`. Branch on `code`, show `message`. An unknown code must be treated as a refusal: the app does.\n\n**Money.** Totals of a bill written through `POST v1/bills` are calculated by the server from its lines, so no client can store an inconsistent bill. Stock of a sold product is decremented in the catalogue, and the till picks that up on its next sync.",
     "contact": {
       "name": "QuickTap POS billing"
