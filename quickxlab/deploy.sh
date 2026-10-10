@@ -241,7 +241,7 @@ else
     if [ ! -f .env ]; then
       cp .env.example .env
       echo "   STOP: there was no .env, so one was created from .env.example and nothing else ran."
-      echo "   Edit it now - these six values decide whether this install is usable:"
+      echo "   Edit it now. These are the values that decide whether this install is usable:"
       echo "     APP_URL=https://your-domain            DB_HOST / DB_DATABASE / DB_USERNAME / DB_PASSWORD"
       echo "     BILLING_APP_ID / BILLING_APP_API_KEY   (must equal APP_ID / API_KEY from app/build.gradle,"
       echo "                                            or every existing till gets BAD_BUILD)"
