@@ -240,7 +240,14 @@ else
     fi
     if [ ! -f .env ]; then
       cp .env.example .env
-      echo "   .env created from .env.example — set DB_* and BILLING_* in it, then re-run:  nano .env"
+      echo "   STOP: there was no .env, so one was created from .env.example and nothing else ran."
+      echo "   Edit it now. These are the values that decide whether this install is usable:"
+      echo "     APP_URL=https://your-domain            DB_HOST / DB_DATABASE / DB_USERNAME / DB_PASSWORD"
+      echo "     BILLING_APP_ID / BILLING_APP_API_KEY   (must equal APP_ID / API_KEY from app/build.gradle,"
+      echo "                                            or every existing till gets BAD_BUILD)"
+      echo "     SEED_ADMIN_USER / SEED_ADMIN_PASSWORD  (only db:seed reads these; /admin login)"
+      echo "   then re-run this script - it resumes cleanly, nothing above was lost."
+      exit 1
     fi
     grep -q "^APP_KEY=base64:" .env || php artisan key:generate --force
     # Before anything writes: can this server actually reach that MySQL database? The billing
