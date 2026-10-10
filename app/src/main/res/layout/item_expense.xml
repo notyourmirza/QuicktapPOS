@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    style="@style/CardStat"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="8dp"
+    app:cardCornerRadius="14dp">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical" android:orientation="horizontal" android:padding="12dp">
+        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
+            <TextView android:id="@+id/textExpenseItemTitle" style="@style/SectionTitle" android:layout_width="match_parent" android:layout_height="wrap_content" android:maxLines="1" android:ellipsize="end" />
+            <TextView android:id="@+id/textExpenseItemMeta" style="@style/Caption" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:maxLines="1" android:ellipsize="end" />
+            <TextView android:id="@+id/textExpenseItemNote" style="@style/Caption" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:maxLines="1" android:ellipsize="end" />
+        </LinearLayout>
+        <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:gravity="end" android:orientation="vertical">
+            <TextView android:id="@+id/textExpenseItemAmount" style="@style/StatValue" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="@color/danger" />
+            <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="4dp" android:orientation="horizontal">
+                <ImageButton android:id="@+id/buttonEditExpense" android:layout_width="34dp" android:layout_height="34dp" android:background="@drawable/bg_icon_button_soft" android:contentDescription="Edit expense" android:padding="8dp" android:src="@drawable/ic_edit" android:tint="@color/brand_primary" />
+                <ImageButton android:id="@+id/buttonDeleteExpense" android:layout_width="34dp" android:layout_height="34dp" android:layout_marginStart="6dp" android:background="@drawable/bg_icon_button_soft" android:contentDescription="Delete expense" android:padding="8dp" android:src="@drawable/ic_delete" android:tint="@color/danger" />
+            </LinearLayout>
+        </LinearLayout>
+    </LinearLayout>
+</com.google.android.material.card.MaterialCardView>

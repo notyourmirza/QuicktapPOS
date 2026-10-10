@@ -1,0 +1,71 @@
+<resources>
+    <!-- QuickTap POS redesign: solid Deep Ink / Lime / Teal / Cream palette. -->
+    <color name="brand_primary">#F45100</color>
+    <color name="brand_primary_dark">#BF360C</color>
+    <color name="brand_primary_soft">#FFF0E0</color>
+    <color name="brand_secondary">#F45100</color>
+    <color name="brand_secondary_soft">#FFF0E0</color>
+    <color name="brand_accent">#F45100</color>
+    <color name="brand_accent_soft">#FFF0E0</color>
+
+    <color name="app_background">#FFFFFF</color>
+    <color name="app_surface">#FFFFFF</color>
+    <color name="app_surface_muted">#F8F8F8</color>
+    <color name="app_outline">#C7CDD8</color>
+    <color name="app_outline_soft">#D9DEE8</color>
+
+    <!-- Order Summary visual system -->
+    <color name="order_summary_background">#F6F7FB</color>
+    <color name="order_summary_surface">#FFFFFF</color>
+    <color name="order_summary_surface_soft">#FFF8F2</color>
+    <color name="order_summary_accent_soft">#FFF0E6</color>
+    <color name="order_summary_dark">#1F2430</color>
+    <color name="order_summary_muted">#7A8190</color>
+
+    <color name="text_primary">#171717</color>
+    <color name="text_muted">#666666</color>
+    <color name="text_on_brand">#FFFFFF</color>
+
+    <color name="danger">#EF4444</color>
+    <color name="danger_soft">#FDECEC</color>
+    <color name="success">#22C55E</color>
+    <color name="success_soft">#E7F7EF</color>
+    <color name="warning">#F59E0B</color>
+    <color name="warning_soft">#FFF1D8</color>
+
+    <color name="ripple_brand">#33C8FF3D</color>
+
+    <!-- Legacy names retained for compatibility; hero backgrounds are now solid. -->
+    <color name="hero_gradient_start">#BF360C</color>
+    <color name="hero_gradient_mid">#F45100</color>
+    <color name="hero_gradient_end">#FF6D00</color>
+
+    <color name="dark_background">#FFFFFF</color>
+    <color name="dark_surface">#FFFFFF</color>
+    <color name="dark_surface_muted">#F8F8F8</color>
+    <color name="dark_outline">#DADADA</color>
+    <color name="dark_outline_soft">#EEEEEE</color>
+    <color name="dark_text_primary">#171717</color>
+    <color name="dark_text_muted">#666666</color>
+
+    <color name="glass_stroke">#DADADA</color>
+    <color name="white">#FFFFFFFF</color>
+    <color name="black">#FF000000</color>
+
+    <color name="nav_surface_start">#FFFFFF</color>
+    <color name="nav_surface_end">#FFFFFF</color>
+    <color name="nav_stroke">#DADADA</color>
+    <color name="nav_indicator">#FFE0B2</color>
+
+    <!-- Prompt-driven premium dark drawer tokens. -->
+    <color name="drawer_dark_bg">#0B0D12</color>
+    <color name="drawer_dark_surface">#141820</color>
+    <color name="drawer_dark_surface_soft">#1B202A</color>
+    <color name="drawer_dark_outline">#343A46</color>
+    <color name="drawer_dark_outline_soft">#252B35</color>
+    <color name="drawer_dark_text">#F7F7F8</color>
+    <color name="drawer_dark_text_muted">#B7BBC4</color>
+    <color name="drawer_amber">#F45100</color>
+    <color name="drawer_amber_soft">#FFF0E0</color>
+    <color name="drawer_lavender">#C7A7FF</color>
+</resources>

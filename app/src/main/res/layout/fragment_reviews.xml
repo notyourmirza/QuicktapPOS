@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:background="@color/order_summary_background">
+    <androidx.core.widget.NestedScrollView android:layout_width="match_parent" android:layout_height="match_parent" android:fillViewport="true" android:scrollbars="none">
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="18dp">
+            <com.google.android.material.card.MaterialCardView android:layout_width="match_parent" android:layout_height="wrap_content" app:cardBackgroundColor="@color/brand_primary" app:cardCornerRadius="22dp" app:cardElevation="2dp">
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="20dp">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Our Reviews" android:textColor="@color/white" android:textSize="26sp" android:textStyle="bold" />
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="5dp" android:text="Share your experience with QuickTap POS" android:textColor="#FFFFE8" android:textSize="13sp" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+            <com.google.android.material.card.MaterialCardView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="14dp" app:cardBackgroundColor="@color/order_summary_surface" app:cardCornerRadius="18dp" app:cardElevation="0dp" app:strokeColor="@color/app_outline_soft" app:strokeWidth="1dp">
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="15dp">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Write a review" android:textColor="@color/order_summary_dark" android:textSize="18sp" android:textStyle="bold" />
+                    <com.google.android.material.textfield.TextInputLayout style="@style/Input.QuickTap" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:hint="Your name">
+                        <com.google.android.material.textfield.TextInputEditText android:id="@+id/inputReviewName" android:layout_width="match_parent" android:layout_height="wrap_content" android:inputType="textCapWords" android:maxLength="60" android:singleLine="true" />
+                    </com.google.android.material.textfield.TextInputLayout>
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:text="Your rating" android:textColor="@color/order_summary_muted" android:textSize="13sp" android:textStyle="bold" />
+                    <RatingBar android:id="@+id/reviewRating" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:numStars="5" android:stepSize="1" android:rating="5" android:contentDescription="Review rating" />
+                    <com.google.android.material.textfield.TextInputLayout style="@style/Input.QuickTap" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:hint="Write your review">
+                        <com.google.android.material.textfield.TextInputEditText android:id="@+id/inputReviewText" android:layout_width="match_parent" android:layout_height="110dp" android:gravity="top|start" android:inputType="textCapSentences|textMultiLine" android:maxLength="500" />
+                    </com.google.android.material.textfield.TextInputLayout>
+                    <com.google.android.material.button.MaterialButton android:id="@+id/buttonSubmitReview" style="@style/BigButton.Accent" android:layout_width="match_parent" android:layout_height="48dp" android:layout_marginTop="12dp" android:text="Submit review" app:cornerRadius="14dp" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="20dp" android:gravity="center_vertical" android:orientation="horizontal">
+                <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Customer reviews" android:textColor="@color/order_summary_dark" android:textSize="20sp" android:textStyle="bold" />
+                <TextView android:id="@+id/textReviewCount" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="@color/order_summary_muted" android:textSize="12sp" />
+            </LinearLayout>
+            <TextView android:id="@+id/textNoReviews" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="16dp" android:gravity="center" android:padding="24dp" android:text="No reviews yet. Be the first to share your experience." android:textColor="@color/order_summary_muted" android:textSize="14sp" />
+            <LinearLayout android:id="@+id/reviewList" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:orientation="vertical" />
+        </LinearLayout>
+    </androidx.core.widget.NestedScrollView>
+</LinearLayout>

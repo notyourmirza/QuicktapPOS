@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    style="@style/ScreenPad"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="?android:attr/colorBackground"
+    android:orientation="vertical">
+
+    <TextView style="@style/Overline" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Business" />
+    <TextView android:id="@+id/textExpenseTitle" style="@style/ScreenTitle" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:text="Expenses" />
+    <TextView style="@style/Caption" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:text="Track operating costs and protect your profit" />
+
+    <HorizontalScrollView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:scrollbars="none">
+        <com.google.android.material.chip.ChipGroup android:id="@+id/chipExpenseRange" android:layout_width="wrap_content" android:layout_height="wrap_content" app:singleSelection="true" app:selectionRequired="true">
+            <com.google.android.material.chip.Chip android:id="@+id/chipExpenseToday" android:layout_width="wrap_content" android:layout_height="wrap_content" android:checkable="true" android:checked="true" android:text="Today" />
+            <com.google.android.material.chip.Chip android:id="@+id/chipExpenseYesterday" android:layout_width="wrap_content" android:layout_height="wrap_content" android:checkable="true" android:text="Yesterday" />
+            <com.google.android.material.chip.Chip android:id="@+id/chipExpenseWeek" android:layout_width="wrap_content" android:layout_height="wrap_content" android:checkable="true" android:text="This week" />
+            <com.google.android.material.chip.Chip android:id="@+id/chipExpenseMonth" android:layout_width="wrap_content" android:layout_height="wrap_content" android:checkable="true" android:text="This month" />
+            <com.google.android.material.chip.Chip android:id="@+id/chipExpenseCustom" android:layout_width="wrap_content" android:layout_height="wrap_content" android:checkable="true" android:text="Custom" />
+        </com.google.android.material.chip.ChipGroup>
+    </HorizontalScrollView>
+
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:baselineAligned="false" android:orientation="horizontal">
+        <com.google.android.material.card.MaterialCardView style="@style/CardStat" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="12dp">
+                <TextView style="@style/StatLabel" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Selected period" />
+                <TextView android:id="@+id/textPeriodExpenses" style="@style/StatValue" android:layout_width="match_parent" android:layout_height="wrap_content" android:maxLines="2" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+        <com.google.android.material.card.MaterialCardView style="@style/CardStat" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginStart="8dp" android:layout_weight="1">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="12dp">
+                <TextView style="@style/StatLabel" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Total expenses" />
+                <TextView android:id="@+id/textTotalExpenses" style="@style/StatValue" android:layout_width="match_parent" android:layout_height="wrap_content" android:maxLines="2" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+    </LinearLayout>
+
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:baselineAligned="false" android:orientation="horizontal">
+        <TextView android:id="@+id/textTodayExpenses" style="@style/Caption" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Today: 0" />
+        <TextView android:id="@+id/textWeekExpenses" style="@style/Caption" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="end" android:text="This week: 0" />
+    </LinearLayout>
+
+    <com.google.android.material.button.MaterialButton android:id="@+id/buttonAddExpense" style="@style/BigButton" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:minHeight="50dp" android:text="Add expense" app:icon="@drawable/ic_plus" app:iconGravity="textStart" />
+
+    <TextView android:id="@+id/textExpenseEmpty" style="@style/EmptyState" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:text="No expenses recorded for this period." android:visibility="gone" />
+    <androidx.recyclerview.widget.RecyclerView android:id="@+id/recyclerExpenses" android:layout_width="match_parent" android:layout_height="0dp" android:layout_marginTop="8dp" android:layout_weight="1" android:clipToPadding="false" android:paddingBottom="24dp" android:scrollbars="none" />
+</LinearLayout>

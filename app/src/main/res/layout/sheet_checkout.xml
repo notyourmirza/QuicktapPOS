@@ -1,0 +1,383 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/order_summary_background"
+    android:orientation="vertical">
+
+    <View
+        android:layout_width="36dp"
+        android:layout_height="3dp"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="7dp"
+        android:background="@drawable/bg_sheet_handle" />
+
+    <com.google.android.material.card.MaterialCardView
+        android:layout_width="match_parent"
+        android:layout_height="76dp"
+        android:layout_marginHorizontal="10dp"
+        android:layout_marginTop="6dp"
+        app:cardBackgroundColor="@color/brand_primary"
+        app:cardCornerRadius="16dp"
+        app:cardElevation="1dp">
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingHorizontal="11dp"
+            android:paddingVertical="7dp">
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Order Summary"
+                    android:textColor="@color/white"
+                    android:textSize="17sp"
+                    android:textStyle="bold" />
+                <TextView
+                    android:id="@+id/textSheetCount"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:textColor="#FFFFF0"
+                    android:textSize="12sp" />
+            </LinearLayout>
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:gravity="end"
+                android:orientation="vertical">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="GRAND TOTAL"
+                    android:textColor="#FFFFF0"
+                    android:textSize="9sp"
+                    android:textStyle="bold"
+                    android:letterSpacing="0.12" />
+                <TextView
+                    android:id="@+id/textHeaderTotal"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="1dp"
+                    android:textColor="@color/white"
+                    android:textSize="20sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+            <ImageView
+                android:id="@+id/buttonClearCart"
+                android:layout_width="34dp"
+                android:layout_height="34dp"
+                android:layout_marginStart="6dp"
+                android:background="@drawable/bg_delete_header_selector"
+                android:clickable="true"
+                android:contentDescription="Clear cart"
+                android:focusable="true"
+                android:padding="8dp"
+                android:src="@drawable/ic_delete"
+                android:tint="@color/white" />
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+    <androidx.core.widget.NestedScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:clipToPadding="false"
+        android:paddingHorizontal="10dp"
+        android:paddingBottom="6dp"
+        android:scrollbars="none">
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Items"
+                    android:textColor="@color/order_summary_dark"
+                    android:textSize="15sp"
+                    android:textStyle="bold" />
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Adjust quantity"
+                    android:textColor="@color/order_summary_muted"
+                    android:textSize="11sp" />
+            </LinearLayout>
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/recyclerCart"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="5dp"
+                android:nestedScrollingEnabled="false" />
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                app:cardBackgroundColor="@color/order_summary_accent_soft"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="1dp"
+                app:strokeColor="@color/brand_primary"
+                app:strokeWidth="2dp">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:padding="12dp">
+                    <com.google.android.material.textfield.TextInputLayout
+                        style="@style/Input.QuickTap"
+                        android:layout_width="0dp"
+                        android:layout_height="62dp"
+                        android:layout_weight="1"
+                        android:hint="Customer code (optional)">
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/inputCustomerCode"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:gravity="center_vertical"
+                            android:textColor="@color/order_summary_dark"
+                            android:textColorHint="@color/brand_primary_dark"
+                            android:textStyle="bold"
+                            android:inputType="number"
+                            android:maxLength="9"
+                            android:paddingStart="12dp"
+                            android:paddingEnd="12dp"
+                            android:paddingTop="0dp"
+                            android:paddingBottom="0dp"
+                            android:singleLine="true"
+                            android:textSize="16sp" />
+                    </com.google.android.material.textfield.TextInputLayout>
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/buttonNewCustomer"
+                        style="@style/Button.QuickTap.Outlined"
+                        android:layout_width="wrap_content"
+                        android:layout_height="48dp"
+                        android:layout_marginStart="8dp"
+                        android:minWidth="0dp"
+                        android:text="New"
+                        android:textSize="12sp"
+                        app:cornerRadius="12dp" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <TextView
+                android:id="@+id/textCartEmpty"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:paddingVertical="20dp"
+                android:text="Your order is empty"
+                android:textColor="@color/order_summary_muted"
+                android:textSize="13sp" />
+
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                app:cardBackgroundColor="@color/order_summary_surface"
+                app:cardCornerRadius="14dp"
+                app:cardElevation="0dp"
+                app:strokeColor="@color/app_outline_soft"
+                app:strokeWidth="1dp">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="9dp">
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="SUMMARY"
+                        android:textColor="@color/order_summary_muted"
+                        android:textSize="10sp"
+                        android:textStyle="bold"
+                        android:letterSpacing="0.12" />
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:orientation="horizontal">
+                        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Subtotal" android:textColor="@color/order_summary_muted" android:textSize="13sp" />
+                        <TextView android:id="@+id/textSubtotal" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="@color/brand_primary_dark" android:textSize="13sp" android:textStyle="bold" />
+                    </LinearLayout>
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="7dp" android:gravity="center_vertical" android:orientation="horizontal">
+                        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Discount" android:textColor="@color/order_summary_muted" android:textSize="13sp" />
+                        <com.google.android.material.chip.ChipGroup android:id="@+id/chipGroupDiscount" android:layout_width="wrap_content" android:layout_height="32dp" app:singleLine="true" app:singleSelection="true" app:selectionRequired="true">
+                            <com.google.android.material.chip.Chip android:id="@+id/chipDiscountAmount" style="@style/Chip.QuickTap" android:layout_width="wrap_content" android:layout_height="32dp" android:checkable="true" android:checked="true" android:text="Rs" android:textSize="11sp" />
+                            <com.google.android.material.chip.Chip android:id="@+id/chipDiscountPercent" style="@style/Chip.QuickTap" android:layout_width="wrap_content" android:layout_height="32dp" android:checkable="true" android:text="%" android:textSize="11sp" />
+                        </com.google.android.material.chip.ChipGroup>
+                    </LinearLayout>
+                    <com.google.android.material.textfield.TextInputLayout
+                        style="@style/Input.QuickTap"
+                        android:layout_width="match_parent"
+                        android:layout_height="48dp"
+                        android:layout_marginTop="4dp"
+                        android:hint="Discount amount">
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/inputDiscount"
+                            android:layout_width="match_parent"
+                            android:textColor="@color/brand_primary_dark"
+                            android:layout_height="match_parent"
+                            android:inputType="numberDecimal"
+                            android:minHeight="0dp"
+                            android:paddingVertical="0dp" />
+                    </com.google.android.material.textfield.TextInputLayout>
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:orientation="horizontal">
+                        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Discount applied" android:textColor="@color/order_summary_muted" android:textSize="13sp" />
+                        <TextView android:id="@+id/textDiscount" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="@color/success" android:textSize="13sp" android:textStyle="bold" />
+                    </LinearLayout>
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:orientation="horizontal">
+                        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Tax" android:textColor="@color/order_summary_muted" android:textSize="13sp" />
+                        <TextView android:id="@+id/textTax" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="#7C3AED" android:textSize="13sp" android:textStyle="bold" />
+                    </LinearLayout>
+                    <View android:layout_width="match_parent" android:layout_height="1dp" android:layout_marginTop="9dp" android:background="@color/app_outline_soft" />
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:gravity="center_vertical" android:orientation="horizontal">
+                        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Grand Total" android:textColor="@color/order_summary_dark" android:textSize="16sp" android:textStyle="bold" />
+                        <TextView android:id="@+id/textGrandTotal" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="@color/brand_primary" android:textSize="19sp" android:textStyle="bold" />
+                    </LinearLayout>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="Payment"
+                android:textColor="@color/order_summary_dark"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+            <com.google.android.material.chip.ChipGroup
+                android:id="@+id/chipGroupPayment"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="5dp"
+                app:selectionRequired="true"
+                app:singleLine="true"
+                app:singleSelection="true">
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chipPaid"
+                    style="@style/Chip.QuickTap"
+                    android:layout_width="wrap_content"
+                    android:layout_height="44dp"
+                    android:checked="true"
+                    android:minWidth="132dp"
+                    android:gravity="center"
+                    android:text="Paid"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    app:chipBackgroundColor="@color/payment_chip_background"
+                    app:chipStrokeColor="@color/app_outline"
+                    app:chipStrokeWidth="1dp"
+                    android:textColor="@color/payment_chip_text" />
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chipUnpaid"
+                    style="@style/Chip.QuickTap"
+                    android:layout_width="wrap_content"
+                    android:layout_height="44dp"
+                    android:gravity="center"
+                    android:minWidth="132dp"
+                    android:text="Unpaid"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    app:chipBackgroundColor="@color/payment_chip_background"
+                    app:chipStrokeColor="@color/app_outline"
+                    app:chipStrokeWidth="1dp"
+                    android:textColor="@color/payment_chip_text" />
+            </com.google.android.material.chip.ChipGroup>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="Order type"
+                android:textColor="@color/order_summary_dark"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+            <com.google.android.material.chip.ChipGroup
+                android:id="@+id/chipGroupOrderType"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="5dp"
+                app:selectionRequired="true"
+                app:singleLine="false"
+                app:singleSelection="true" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="Optional Note"
+                android:textColor="@color/order_summary_dark"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+            <com.google.android.material.textfield.TextInputLayout
+                style="@style/Input.QuickTap"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:layout_marginTop="5dp"
+                android:hint="Add a note...">
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/inputOrderNote"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:inputType="textCapSentences|textMultiLine"
+                    android:maxLines="1" />
+            </com.google.android.material.textfield.TextInputLayout>
+        </LinearLayout>
+    </androidx.core.widget.NestedScrollView>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/white"
+        android:elevation="6dp"
+        android:orientation="horizontal"
+        android:paddingHorizontal="12dp"
+        android:paddingTop="8dp"
+        android:paddingBottom="10dp">
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/buttonHold"
+            style="@style/Button.QuickTap.Outlined"
+            android:layout_width="0dp"
+            android:layout_height="52dp"
+            android:layout_marginEnd="5dp"
+            android:layout_weight="0.95"
+            android:minWidth="0dp"
+            android:text="Hold Order"
+            android:maxLines="1"
+            android:ellipsize="none"
+            android:paddingStart="4dp"
+            android:paddingEnd="4dp"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            app:cornerRadius="13dp"
+            app:icon="@drawable/ic_clock"
+            app:iconSize="16dp"
+            app:iconPadding="4dp"
+            app:iconGravity="textStart" />
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/buttonPrint"
+            style="@style/BigButton.Accent"
+            android:layout_width="0dp"
+            android:layout_height="52dp"
+            android:layout_weight="1.25"
+            android:text="Print Receipt"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            app:cornerRadius="13dp"
+            app:icon="@drawable/ic_print"
+            app:iconSize="17dp" />
+    </LinearLayout>
+</LinearLayout>

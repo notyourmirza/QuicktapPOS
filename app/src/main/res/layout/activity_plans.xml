@@ -1,0 +1,219 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.coordinatorlayout.widget.CoordinatorLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#FAFBFC"
+    android:fitsSystemWindows="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+
+        <com.google.android.material.appbar.MaterialToolbar
+            android:id="@+id/toolbar"
+            android:layout_width="match_parent"
+            android:layout_height="64dp"
+            android:background="@drawable/bg_plans_toolbar"
+            app:navigationIcon="@drawable/ic_back"
+            app:navigationIconTint="@color/white"
+            app:title="My plan"
+            app:titleCentered="true"
+            app:titleTextColor="@color/white" />
+
+        <androidx.core.widget.NestedScrollView
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:clipToPadding="false"
+            android:fillViewport="true"
+            android:paddingBottom="32dp"
+            android:scrollbars="none">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingHorizontal="24dp"
+                android:paddingTop="24dp">
+
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/cardActivePlan"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    app:cardBackgroundColor="@color/white"
+                    app:cardCornerRadius="24dp"
+                    app:cardElevation="3dp"
+                    app:strokeColor="#E8ECF2"
+                    app:strokeWidth="1dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="20dp">
+
+                        <LinearLayout
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:background="@drawable/bg_pill_brand_soft"
+                            android:gravity="center_vertical"
+                            android:paddingHorizontal="16dp"
+                            android:paddingVertical="9dp">
+                            <ImageView
+                                android:layout_width="22dp"
+                                android:layout_height="22dp"
+                                android:contentDescription="Cloud"
+                                android:src="@drawable/ic_cloud_upload"
+                                android:scaleType="centerInside" />
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="8dp"
+                                android:text="QUICKTAP CLOUD"
+                                android:textColor="#F56B2A"
+                                android:textSize="14sp"
+                                android:textStyle="bold" />
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="22dp"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal">
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical">
+                                <TextView
+                                    android:id="@+id/textCurrentPlan"
+                                    android:layout_width="1dp"
+                                    android:layout_height="1dp"
+                                    android:visibility="gone"
+                                    android:text="Current licence" />
+                                <TextView
+                                    android:id="@+id/textActivePlanName"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:text="Scale your counter"
+                                    android:textColor="#111936"
+                                    android:textSize="26sp"
+                                    android:textStyle="bold" />
+                                <TextView
+                                    android:id="@+id/textActivePlanMeta"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginTop="10dp"
+                                    android:lineSpacingExtra="4dp"
+                                    android:text="No active plan — please contact your administrator."
+                                    android:textColor="#667085"
+                                    android:textSize="15sp" />
+                            </LinearLayout>
+                            <ImageView
+                                android:layout_width="82dp"
+                                android:layout_height="82dp"
+                                android:layout_marginStart="8dp"
+                                android:contentDescription="Cloud service"
+                                android:src="@drawable/ic_cloud_upload"
+                                android:scaleType="centerInside" />
+                        </LinearLayout>
+
+                        <TextView
+                            android:id="@+id/textExpiryCountdown"
+                            android:layout_width="1dp"
+                            android:layout_height="1dp"
+                            android:visibility="gone"
+                            android:text="License time remaining" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="16dp"
+                            android:background="@drawable/bg_countdown_section"
+                            android:orientation="vertical"
+                            android:padding="12dp">
+                            <LinearLayout
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:gravity="center_vertical">
+                                <ImageView
+                                    android:layout_width="24dp"
+                                    android:layout_height="24dp"
+                                    android:contentDescription="Timer"
+                                    android:src="@drawable/ic_clock"
+                                    app:tint="#F56B2A" />
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginStart="8dp"
+                                    android:text="License remaining"
+                                    android:textColor="#111936"
+                                    android:textSize="15sp"
+                                    android:textStyle="bold" />
+                            </LinearLayout>
+                            <LinearLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="12dp"
+                                android:gravity="center"
+                                android:orientation="horizontal">
+                                <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:background="@drawable/bg_countdown_box" android:gravity="center" android:orientation="vertical" android:paddingVertical="8dp">
+                                    <TextView android:id="@+id/textDaysValue" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="00" android:textColor="#F56B2A" android:textSize="22sp" android:textStyle="bold" />
+                                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="days" android:textColor="#667085" android:textSize="10sp" />
+                                </LinearLayout>
+                                <TextView android:layout_width="16dp" android:layout_height="wrap_content" android:gravity="center" android:text=":" android:textColor="#667085" android:textSize="20sp" />
+                                <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:background="@drawable/bg_countdown_box" android:gravity="center" android:orientation="vertical" android:paddingVertical="8dp">
+                                    <TextView android:id="@+id/textHoursValue" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="00" android:textColor="#F56B2A" android:textSize="22sp" android:textStyle="bold" />
+                                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="hrs" android:textColor="#667085" android:textSize="10sp" />
+                                </LinearLayout>
+                                <TextView android:layout_width="16dp" android:layout_height="wrap_content" android:gravity="center" android:text=":" android:textColor="#667085" android:textSize="20sp" />
+                                <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:background="@drawable/bg_countdown_box" android:gravity="center" android:orientation="vertical" android:paddingVertical="8dp">
+                                    <TextView android:id="@+id/textMinutesValue" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="00" android:textColor="#F56B2A" android:textSize="22sp" android:textStyle="bold" />
+                                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="min" android:textColor="#667085" android:textSize="10sp" />
+                                </LinearLayout>
+                                <TextView android:layout_width="16dp" android:layout_height="wrap_content" android:gravity="center" android:text=":" android:textColor="#667085" android:textSize="20sp" />
+                                <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:background="@drawable/bg_countdown_box" android:gravity="center" android:orientation="vertical" android:paddingVertical="8dp">
+                                    <TextView android:id="@+id/textSecondsValue" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="00" android:textColor="#F56B2A" android:textSize="22sp" android:textStyle="bold" />
+                                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="sec" android:textColor="#667085" android:textSize="10sp" />
+                                </LinearLayout>
+                            </LinearLayout>
+                        </LinearLayout>
+
+                        <TextView android:id="@+id/textActiveBadge" android:layout_width="1dp" android:layout_height="1dp" android:visibility="gone" />
+                        <LinearLayout android:id="@+id/containerActiveFeatures" android:layout_width="match_parent" android:layout_height="wrap_content" android:visibility="gone" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:background="@drawable/bg_admin_card"
+                    app:cardBackgroundColor="#F5F9FF"
+                    app:cardCornerRadius="22dp"
+                    app:cardElevation="0dp"
+                    app:strokeColor="#D5E7FF"
+                    app:strokeWidth="1dp">
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical" android:orientation="horizontal" android:padding="10dp">
+                        <ImageView android:layout_width="36dp" android:layout_height="36dp" android:background="@drawable/bg_icon_circle" android:contentDescription="Administrator" android:padding="8dp" android:src="@drawable/ic_shield" app:tint="#1976F3" />
+                        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginStart="14dp" android:layout_weight="1" android:orientation="vertical">
+                            <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Your plan is assigned by your administrator." android:textColor="#111936" android:textSize="15sp" android:textStyle="bold" />
+                            <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="5dp" android:text="Contact them to change or renew it." android:textColor="#667085" android:textSize="14sp" />
+                        </LinearLayout>
+                        <ImageView android:layout_width="24dp" android:layout_height="24dp" android:contentDescription="More" android:src="@drawable/ic_back" android:rotation="180" app:tint="#667085" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <TextView android:id="@+id/textPlansFootnote" android:layout_width="1dp" android:layout_height="1dp" android:visibility="gone" />
+                <com.google.android.material.button.MaterialButtonToggleGroup android:id="@+id/toggleCycle" android:layout_width="1dp" android:layout_height="1dp" android:visibility="gone"><com.google.android.material.button.MaterialButton android:id="@+id/buttonMonthly" android:layout_width="1dp" android:layout_height="1dp" /><com.google.android.material.button.MaterialButton android:id="@+id/buttonYearly" android:layout_width="1dp" android:layout_height="1dp" /></com.google.android.material.button.MaterialButtonToggleGroup>
+                <androidx.recyclerview.widget.RecyclerView android:id="@+id/recyclerPlans" android:layout_width="1dp" android:layout_height="1dp" android:visibility="gone" />
+            </LinearLayout>
+        </androidx.core.widget.NestedScrollView>
+
+        <com.google.android.material.card.MaterialCardView android:id="@+id/purchaseBar" android:layout_width="1dp" android:layout_height="1dp" android:visibility="gone"><LinearLayout android:layout_width="1dp" android:layout_height="1dp"><TextView android:id="@+id/textSelectedName" android:layout_width="1dp" android:layout_height="1dp" /><TextView android:id="@+id/textSelectedPrice" android:layout_width="1dp" android:layout_height="1dp" /><com.google.android.material.button.MaterialButton android:id="@+id/buttonBuy" android:layout_width="1dp" android:layout_height="1dp" /></LinearLayout></com.google.android.material.card.MaterialCardView>
+    </LinearLayout>
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

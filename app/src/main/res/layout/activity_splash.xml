@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/splashRoot"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/brand_primary"
+    android:fitsSystemWindows="false">
+
+    <ImageView
+        android:layout_width="match_parent"
+        android:layout_height="270dp"
+        android:layout_gravity="bottom"
+        android:importantForAccessibility="no"
+        android:scaleType="fitXY"
+        android:src="@drawable/splash_wave_xml" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center_horizontal"
+        android:orientation="vertical"
+        android:paddingHorizontal="24dp"
+        android:paddingTop="185dp">
+
+        <ImageView
+            android:id="@+id/splashCartXml"
+            android:layout_width="320dp"
+            android:layout_height="220dp"
+            android:contentDescription="QuickTap printer"
+            android:elevation="4dp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/splash_printer_reference" />
+
+        <TextView
+            android:id="@+id/splashTitleXml"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:fontFamily="sans-serif"
+            android:letterSpacing="0.01"
+            android:text="MA Technologies"
+            android:textColor="@color/white"
+            android:textSize="30sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/splashTaglineXml"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="9dp"
+            android:letterSpacing="0.18"
+            android:text="POINT OF SALE"
+            android:textColor="@color/white"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|center_horizontal"
+        android:layout_marginBottom="52dp"
+        android:gravity="center_horizontal"
+        android:orientation="vertical">
+        <TextView
+            android:id="@+id/splashCreditXml"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="MA Technologies"
+            android:textColor="#4A4A4A"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Smart  •  Fast  •  Reliable"
+            android:textColor="#3E3E3E"
+            android:textSize="13sp" />
+    </LinearLayout>
+
+    <!-- Hidden compatibility bindings for existing 类043 source. -->
+    <LinearLayout
+        android:id="@+id/splashLegacyBindings"
+        android:layout_width="1dp"
+        android:layout_height="1dp"
+        android:visibility="gone">
+        <ImageView android:id="@+id/splashReferenceImage" android:layout_width="1dp" android:layout_height="1dp" />
+        <TextView android:id="@+id/splashCreditOverlay" android:layout_width="1dp" android:layout_height="1dp" />
+        <FrameLayout android:id="@+id/splashLogoWrap" android:layout_width="1dp" android:layout_height="1dp">
+            <ImageView android:id="@+id/splashLogo" android:layout_width="1dp" android:layout_height="1dp" />
+        </FrameLayout>
+        <TextView android:id="@+id/splashTitle" android:layout_width="1dp" android:layout_height="1dp" />
+        <TextView android:id="@+id/splashTagline" android:layout_width="1dp" android:layout_height="1dp" />
+        <ProgressBar android:id="@+id/splashProgress" android:layout_width="1dp" android:layout_height="1dp" />
+        <LinearLayout android:id="@+id/splashCreditGroup" android:layout_width="1dp" android:layout_height="1dp">
+            <TextView android:id="@+id/splashCreditPrefix" android:layout_width="1dp" android:layout_height="1dp" />
+            <TextView android:id="@+id/splashCreditText" android:layout_width="1dp" android:layout_height="1dp" />
+        </LinearLayout>
+    </LinearLayout>
+</FrameLayout>
