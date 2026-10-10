@@ -1,3 +1,8 @@
+> **Superseded by 1.2.0.** The Cloud Sync add-on described in this report was
+> deleted: the paid `cloudsync/` package, its screen and its Settings card are gone, and
+> multi-till data now travels through `v1/sync/push|pull` against `billing-api/`.
+> The report is kept as history of what was built, not as a description of this tree.
+
 # Phase 3 — test script
 
 Automated unit tests are not possible for this module: it is wired into

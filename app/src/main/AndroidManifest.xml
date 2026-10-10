@@ -61,6 +61,7 @@
         <activity android:name=".ui.license.类076" android:exported="false"
             android:launchMode="singleTop" />
         <activity android:name=".ui.license.类079" android:exported="false" />
+        <activity android:name=".ui.license.DeviceAccessActivity" android:exported="false" />
         <activity android:name=".ui.license.类073" android:exported="false" />
         <activity android:name=".ui.类044" android:exported="false"
             android:excludeFromRecents="true"

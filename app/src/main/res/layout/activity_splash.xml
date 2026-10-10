@@ -79,23 +79,4 @@
             android:textSize="13sp" />
     </LinearLayout>
 
-    <!-- Hidden compatibility bindings for existing 类043 source. -->
-    <LinearLayout
-        android:id="@+id/splashLegacyBindings"
-        android:layout_width="1dp"
-        android:layout_height="1dp"
-        android:visibility="gone">
-        <ImageView android:id="@+id/splashReferenceImage" android:layout_width="1dp" android:layout_height="1dp" />
-        <TextView android:id="@+id/splashCreditOverlay" android:layout_width="1dp" android:layout_height="1dp" />
-        <FrameLayout android:id="@+id/splashLogoWrap" android:layout_width="1dp" android:layout_height="1dp">
-            <ImageView android:id="@+id/splashLogo" android:layout_width="1dp" android:layout_height="1dp" />
-        </FrameLayout>
-        <TextView android:id="@+id/splashTitle" android:layout_width="1dp" android:layout_height="1dp" />
-        <TextView android:id="@+id/splashTagline" android:layout_width="1dp" android:layout_height="1dp" />
-        <ProgressBar android:id="@+id/splashProgress" android:layout_width="1dp" android:layout_height="1dp" />
-        <LinearLayout android:id="@+id/splashCreditGroup" android:layout_width="1dp" android:layout_height="1dp">
-            <TextView android:id="@+id/splashCreditPrefix" android:layout_width="1dp" android:layout_height="1dp" />
-            <TextView android:id="@+id/splashCreditText" android:layout_width="1dp" android:layout_height="1dp" />
-        </LinearLayout>
-    </LinearLayout>
 </FrameLayout>

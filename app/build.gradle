@@ -1,4 +1,7 @@
-plugins { id 'com.android.application' }
+plugins {
+    id 'com.android.application'
+    id 'com.google.gms.google-services'
+}
 
 android {
     namespace 'com.quicktap.pos'
@@ -8,8 +11,8 @@ android {
         applicationId "com.quicktap.pos"
         minSdk 21
         targetSdk 34
-        versionCode 1
-        versionName "1.0"
+        versionCode 3
+        versionName "1.2.0"
         // ---- Fixed bootstrap endpoint (never remote controlled) -----------
         // Android -> bootstrap API -> Firebase config -> Remote Config
         //         -> api_base_url -> ApiClient -> self-hosted PHP API
